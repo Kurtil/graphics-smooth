@@ -121,8 +121,8 @@ void main(void){
 
     float dy = halfLineWidth + expand;
     bool inner = false;
+    // TODO this if branch seems only to be needed for the segment case
     if (vertexNum >= 2.) {
-        // TODO next two lines seems only to be needed for the segment case
         dy = -dy;
         inner = true;
     }
@@ -141,21 +141,22 @@ void main(void){
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
     float D = norm.x * norm2.y - norm.y * norm2.x;
     if (D < 0.0) {
+        // norm2 clockwise to norm
         inner = !inner;
     }
 
     norm2 *= isSegmentHead ? -1. : 1.;
 
-    float collinear = step(0.0, dot(norm, norm2));
+    bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2)) == 0.;
+    bool colinear = abs(D) < 0.5;
+
+    bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
     vType = 0.0;
     float dy2 = -1000.0;
 
-    if (abs(D) < 0.01 && collinear < 0.5) {
-        if (type >= ROUND && type < ROUND + 1.5) {
-            type = JOINT_CAP_ROUND;
-        }
-        //TODO: BUTT here too
+    if (oppositeDirection && type == ROUND) {
+        type = JOINT_CAP_ROUND;
     }
 
     vLine1 = vec4(0.0, halfLineWidth, max(abs(norm.x), abs(norm.y)), min(abs(norm.x), abs(norm.y)));
@@ -163,7 +164,7 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT
-        if (abs(D) < 0.01 && collinear < 0.5) {
+        if (oppositeDirection) {
             pos = dy * norm;
         } else {
             if (inner) {
@@ -219,7 +220,7 @@ void main(void){
         vArc.z = 0.0;
         vArc.w = halfLineWidth;
         vType = 3.0;
-    } else if (abs(D) < 0.01 && collinear < 0.5) {
+    } else if (oppositeDirection) {
         // WARNING seems unreachable
         pos = dy * norm;
     } else {
