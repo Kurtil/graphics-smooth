@@ -78,26 +78,28 @@ void main(void){
     vec2 norm = vec2(forward.y, -forward.x);
 
     /**
-     * 4 first vertices are for the segment
-     *   0 _________ 1
-     *    |        /|   
-     *    |      /  |  
-     *    |    /    |  
-     *    |  /      |  
-     *    |/________|  
-     *   3           2
-     * 
-     * 5 to 9 are for the join / cap
+     * 4 first vertices are for the segment.
+     * 5 to 9 are for the join / cap.
+     * Segment head is composed of the 0 and the 3 vertices.
+     *
+     *       SEGMENT        JOIN / CAP
+     *    0 _________ 1   5 _____6     
+     *     |        /|     |    /  \     
+     *     |      /  |     |   /    / 7   
+     *     |    /    |     |  /   /  |    
+     *     |  /      |     | / /     |   
+     *     |/________|     |/_______ |  
+     *    3           2   4           8
+     *    ^
+     *   HEAD 
+     *
      */
+
     // TODO change the following lines, getting the correct cap type!
     float type = floor(aVertexJoint / 16.0);
     float vertexNum = aVertexJoint - type * 16.0;
     float capType = floor(type / 32.0); // will be 0 for non-cap types, else [1, 2, 3, 4]
     type -= capType * 32.0; // not changed for non-cap types, else 0 for cap round, 16 for cap butt (type == 48), 18 for cap square (type == 82)
-
-    int styleId = int(aStyleId + 0.5);
-    float halfLineWidth = styleLine[styleId].x * .5;
-    vTextureId = floor(styleTextureId[styleId] / 4.0);
 
     // cap round treated as the end of joint cap round
     if (capType == CAP_ROUND) {
@@ -106,12 +108,17 @@ void main(void){
         capType = 0.0;
     }
 
+    int styleId = int(aStyleId + 0.5);
+    float halfLineWidth = styleLine[styleId].x / 2.;
+    vTextureId = floor(styleTextureId[styleId] / 4.0);
+
     vec2 pos;
     vLine1 = vec4(0.0, 10.0, 1.0, 0.0);
     vLine2 = vec4(0.0, 10.0, 1.0, 0.0);
     vArc = vec4(0.0);
 
     float dy = halfLineWidth + expand;
+    // TODO inner should be a boolean
     float inner = 0.0;
     if (vertexNum >= 2.) {
         // TODO next two lines seems only to be needed for the segment case
