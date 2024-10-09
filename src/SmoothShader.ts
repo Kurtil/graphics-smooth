@@ -163,7 +163,7 @@ void main(void){
     vLine2 = vec4(0.0, halfLineWidth, max(abs(norm2.x), abs(norm2.y)), min(abs(norm2.x), abs(norm2.y)));
 
     if (vertexNum <= 3.) { 
-        // SEGMENT
+        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT CAP BUTT OR JOINT CAP SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
         if (oppositeDirection) {
             pos = dy * norm;
         } else {
@@ -174,43 +174,43 @@ void main(void){
             }
         }
         vLine2.y = -1000.0;
-        if (capType >= CAP_BUTT && capType < CAP_ROUND) {
-            float extra = step(CAP_SQUARE, capType) * halfLineWidth;
+        if (capType == CAP_BUTT || capType == CAP_SQUARE) {
+            float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
             vec2 back = -forward;
-            if (vertexNum < 0.5 || vertexNum > 2.5) {
+            if (isSegmentHead) {
                 pos += back * (expand + extra);
                 dy2 = expand;
             } else {
                 dy2 = dot(pos + base - pointA, back) - extra;
             }
         }
-        if (type >= JOINT_CAP_BUTT && type < JOINT_CAP_SQUARE + 0.5) {
-            float extra = step(JOINT_CAP_SQUARE, type) * halfLineWidth;
-            if (vertexNum < 0.5 || vertexNum > 2.5) {
+        if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
+            float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
+            if (isSegmentHead) {
                 vLine2.y = dot(pos + base - pointB, forward) - extra;
             } else {
                 pos += forward * (expand + extra);
                 vLine2.y = expand;
-                if (capType >= CAP_BUTT) {
+                if (capType != 0.) {
                     dy2 -= expand + extra;
                 }
             }
         }
     } else if (type == JOINT_CAP_ROUND) {
-        // CAP ROUND -> CAP SQUARE and CAP BUTT may be handled in SEGMENT during the generation of the vertex
         if (inner) {
             dy = -dy;
         }
         vec2 d2 = abs(dy) * forward;
-        if (vertexNum < 4.5) {
+        if (vertexNum == 4.) {
             dy = -dy;
             pos = dy * norm;
-        } else if (vertexNum < 5.5) {
+        } else if (vertexNum == 5.) {
             pos = dy * norm;
-        } else if (vertexNum < 6.5) {
+        } else if (vertexNum == 6.) {
             pos = dy * norm + d2;
             vArc.x = abs(dy);
         } else {
+            // vertexNum 7 or 8
             dy = -dy;
             pos = dy * norm + d2;
             vArc.x = abs(dy);
@@ -221,35 +221,36 @@ void main(void){
         vArc.w = halfLineWidth;
         vType = 3.0;
     } else if (oppositeDirection) {
-        // WARNING seems unreachable
+        // TODO seems unreachable
         pos = dy * norm;
     } else {
-        // JOIN
+        // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND)
         if (inner) {
             dy = -dy;
         }
         float side = sign(dy);
         vec2 norm3 = normalize(norm + norm2);
 
-        if (type >= MITER && type < MITER + 3.5) {
+        if (type == MITER) {
             vec2 farVertex = doBisect(norm, len, norm2, len2, dy, false);
             if (length(farVertex) > abs(dy) * MITER_LIMIT) {
                 type = BEVEL;
             }
         }
 
-        if (vertexNum < 4.5) {
+        if (vertexNum == 4.) {
             pos = doBisect(norm, len, norm2, len2, - dy, true);
-        } else if (vertexNum < 5.5) {
+        } else if (vertexNum == 5.) {
             pos = dy * norm;
-        } else if (vertexNum > 7.5) {
+        } else if (vertexNum == 8.) {
             pos = dy * norm2;
         } else {
-            if (type >= ROUND && type < ROUND + 1.5) {
+            // vertexNum 6 or 7
+            if (type == ROUND) {
                 pos = doBisect(norm, len, norm2, len2, dy, false);
                 float d2 = abs(dy);
                 if (length(pos) > abs(dy) * 1.5) {
-                    if (vertexNum < 6.5) {
+                    if (vertexNum == 6.) {
                         pos.x = dy * norm.x - d2 * norm.y;
                         pos.y = dy * norm.y + d2 * norm.x;
                     } else {
@@ -257,11 +258,11 @@ void main(void){
                         pos.y = dy * norm2.y - d2 * norm2.x;
                     }
                 }
-            } else if (type >= MITER && type < MITER + 3.5) {
+            } else if (type == MITER) {
                 pos = doBisect(norm, len, norm2, len2, dy, false); //farVertex
-            } else if (type >= BEVEL && type < BEVEL + 1.5) {
+            } else if (type == BEVEL) {
                 float d2 = side / resolution;
-                if (vertexNum < 6.5) {
+                if (vertexNum == 6.) {
                     pos = dy * norm + d2 * norm3;
                 } else {
                     pos = dy * norm2 + d2 * norm3;
@@ -269,15 +270,15 @@ void main(void){
             }
         }
 
-        if (type >= ROUND && type < ROUND + 1.5) {
+        if (type == ROUND) {
             vArc.x = side * dot(pos, norm3);
             vArc.y = pos.x * norm3.y - pos.y * norm3.x;
             vArc.z = dot(norm, norm3) * halfLineWidth;
             vArc.w = halfLineWidth;
             vType = 3.0;
-        } else if (type >= MITER && type < MITER + 3.5) {
+        } else if (type == MITER) {
             vType = 1.0;
-        } else if (type >= BEVEL && type < BEVEL + 1.5) {
+        } else if (type == BEVEL) {
             vType = 4.0;
             vArc.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
         }
