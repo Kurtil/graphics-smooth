@@ -16,17 +16,17 @@ app.stage.addChild(graphics2);
 let phase = 0;// -Math.PI/2;
 
 function addLine(graphics, y, len, rad, cap) {
-    graphics.lineStyle({ width: 30, color: 0, alpha: 1, join: PIXI.LINE_JOIN.MITER, cap});
+    graphics.lineStyle({ width: 30, color: 0, alpha: .5, join: PIXI.LINE_JOIN.MITER, cap});
     graphics.moveTo(150 - len, y);
     graphics.lineTo(150, y);
     graphics.lineTo(150 + Math.cos(phase) * rad, y + Math.sin(phase) * rad);
 
-    graphics.lineStyle({ width: 30, color: 0, alpha: 1, join: PIXI.LINE_JOIN.BEVEL, cap});
+    graphics.lineStyle({ width: 30, color: 0, alpha: .5, join: PIXI.LINE_JOIN.BEVEL, cap});
     graphics.moveTo(350 + Math.cos(phase) * rad, y + Math.sin(phase) * rad);
     graphics.lineTo(350, y);
     graphics.lineTo(350 - len, y);
 
-    graphics.lineStyle({ width: 30, color: 0, alpha: 1, join: PIXI.LINE_JOIN.ROUND, cap});
+    graphics.lineStyle({ width: 30, color: 0, alpha: .5, join: PIXI.LINE_JOIN.ROUND, cap});
     graphics.moveTo(550 - len, y);
     graphics.lineTo(550, y);
     graphics.lineTo(550 + Math.cos(phase) * rad, y + Math.sin(phase) * rad);
@@ -41,7 +41,7 @@ function makeFigures(graphics) {
 
 // graphics.rotation = Math.PI * 3 / 2 - 0.0001;
 app.ticker.add((delta) => {
-    phase -= 0.008 * delta;
+    phase -= 0.04 * delta;
     makeFigures(graphics);
     makeFigures(graphics2);
 });

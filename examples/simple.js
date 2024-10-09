@@ -1,6 +1,6 @@
 const app = new PIXI.Application({ antialias: false,
     width: 800, height: 600 * 2,
-    autoDensity: true, resolution: 1.0,
+    autoDensity: false, resolution: .5,
 });
 document.body.appendChild(app.view);
 
@@ -75,23 +75,23 @@ function makeFigures(graphics) {
     graphics.drawRoundedRect(50, 440, 100, 100, 16);
     graphics.endFill();
 
-// draw star
-    graphics.lineStyle(2, 0xFFFFFF);
-    graphics.beginFill(0x35CC5A, 1);
-    graphics.drawStar(360, 370, 5, 50);
-    graphics.endFill();
+// // draw star
+//     graphics.lineStyle(2, 0xFFFFFF);
+//     graphics.beginFill(0x35CC5A, 1);
+//     graphics.drawStar(360, 370, 5, 50);
+//     graphics.endFill();
 
-// draw star 2
-    graphics.lineStyle(2, 0xFFFFFF);
-    graphics.beginFill(0xFFCC5A, 1);
-    graphics.drawStar(280, 510, 7, 50);
-    graphics.endFill();
+// // draw star 2
+//     graphics.lineStyle(2, 0xFFFFFF);
+//     graphics.beginFill(0xFFCC5A, 1);
+//     graphics.drawStar(280, 510, 7, 50);
+//     graphics.endFill();
 
-// draw star 3
-    graphics.lineStyle(4, 0xFFFFFF);
-    graphics.beginFill(0x55335A, 1);
-    graphics.drawStar(470, 450, 4, 50);
-    graphics.endFill();
+// // draw star 3
+//     graphics.lineStyle(4, 0xFFFFFF);
+//     graphics.beginFill(0x55335A, 1);
+//     graphics.drawStar(470, 450, 4, 50);
+//     graphics.endFill();
 
 // draw polygon
     const path = [600, 370, 700, 460, 780, 420, 730, 570, 590, 520];
