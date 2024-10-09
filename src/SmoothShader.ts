@@ -13,7 +13,6 @@ const float JOINT_CAP_ROUND = 20.0;
 const float CAP_BUTT = 1.0;
 const float CAP_SQUARE = 2.0;
 const float CAP_ROUND = 3.0;
-const float CAP_BUTT2 = 4.0;
 
 const float MITER_LIMIT = 10.0;
 
@@ -73,11 +72,24 @@ void main(void){
     vec2 pointA = (translationMatrix * vec3(aPoint1, 1.0)).xy;
     vec2 pointB = (translationMatrix * vec3(aPoint2, 1.0)).xy;
 
-    vec2 xBasis = pointB - pointA;
-    float len = length(xBasis);
-    vec2 forward = xBasis / len;
+    vec2 segment = pointB - pointA;
+    float len = length(segment);
+    vec2 forward = segment / len;
     vec2 norm = vec2(forward.y, -forward.x);
 
+    /**
+     * 4 first vertices are for the segment
+     *   0 _________ 1
+     *    |        /|   
+     *    |      /  |  
+     *    |    /    |  
+     *    |  /      |  
+     *    |/________|  
+     *   3           2
+     * 
+     * 5 to 9 are for the join / cap
+     */
+    // TODO change the following lines, getting the correct cap type!
     float type = floor(aVertexJoint / 16.0);
     float vertexNum = aVertexJoint - type * 16.0;
     float capType = floor(type / 32.0); // will be 0 for non-cap types, else [1, 2, 3, 4]
@@ -87,8 +99,6 @@ void main(void){
     float halfLineWidth = styleLine[styleId].x * .5;
     vTextureId = floor(styleTextureId[styleId] / 4.0);
 
-    vec2 pos;
-
     // cap round treated as the end of joint cap round
     if (capType == CAP_ROUND) {
         vertexNum += 4.0;
@@ -96,26 +106,26 @@ void main(void){
         capType = 0.0;
     }
 
+    vec2 pos;
     vLine1 = vec4(0.0, 10.0, 1.0, 0.0);
     vLine2 = vec4(0.0, 10.0, 1.0, 0.0);
     vArc = vec4(0.0);
 
-    // JOIN
     float dy = halfLineWidth + expand;
     float inner = 0.0;
     if (vertexNum >= 2.) {
+        // TODO next two lines seems only to be needed for the segment case
         dy = -dy;
         inner = 1.0;
     }
 
-    vec2 base, next, xBasis2;
-    float flag = 0.0; // is flag really needed?
-    float side2 = 1.0;
-    if (vertexNum == 0. || vertexNum == 3.) {
+    vec2 base, next;
+    float flag = 0.0; // TODO is flag really needed?
+    bool isSegmentHead = vertexNum == 0. || vertexNum == 3.;
+    if (isSegmentHead) {
         next = (translationMatrix * vec3(aPrev, 1.0)).xy;
         base = pointA;
         flag = type - floor(type / 2.0) * 2.0; // could it be anything other than 0 ?
-        side2 = -1.0;
     } else {
         next = (translationMatrix * vec3(aNext, 1.0)).xy;
         base = pointB;
@@ -124,15 +134,15 @@ void main(void){
             // check miter limit here?
         }
     }
-    xBasis2 = next - base;
-    float len2 = length(xBasis2);
-    vec2 norm2 = vec2(xBasis2.y, -xBasis2.x) / len2;
+    vec2 adjacentSegment = next - base;
+    float len2 = length(adjacentSegment);
+    vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
     float D = norm.x * norm2.y - norm.y * norm2.x;
     if (D < 0.0) {
         inner = 1.0 - inner;
     }
 
-    norm2 *= side2;
+    norm2 *= isSegmentHead ? -1. : 1.;
 
     float collinear = step(0.0, dot(norm, norm2));
 

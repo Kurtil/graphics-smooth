@@ -12,5 +12,4 @@ export enum JOINT_TYPE
     CAP_BUTT = 1 << 5, // 32
     CAP_SQUARE = 2 << 5, // 64
     CAP_ROUND = 3 << 5, // 96
-    CAP_BUTT2 = 4 << 5, // 128
 }
