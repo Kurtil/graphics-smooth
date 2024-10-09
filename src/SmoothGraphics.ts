@@ -71,6 +71,8 @@ export class SmoothGraphics extends Container
     public pluginName: string;
     public currentPath: Polygon;
 
+    private firstRender: boolean;
+
     protected batches: Array<any>;
     protected batchTint: number;
     protected batchDirty: number;
@@ -97,6 +99,8 @@ export class SmoothGraphics extends Container
 
         this._geometry = geometry || new SmoothGraphicsGeometry();
         this._geometry.refCount++;
+
+        this.firstRender = true;
 
         this.shader = null;
 
@@ -806,6 +810,12 @@ export class SmoothGraphics extends Container
             }
 
             // bind the geometry...
+            if (this.firstRender) {
+                console.log("indices", geometry.buffers.at(1).data);
+                console.log("vertex", geometry.buffers.at(0).data);
+
+                this.firstRender = false;
+            }
             renderer.geometry.draw(DRAW_MODES.TRIANGLES, size, start);
         }
     }
