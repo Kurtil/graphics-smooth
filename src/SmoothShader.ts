@@ -84,10 +84,8 @@ void main(void){
     type -= capType * 32.0; // not changed for non-cap types, else 0 for cap round, 16 for cap butt (type == 48), 18 for cap square (type == 82)
 
     int styleId = int(aStyleId + 0.5);
-    float lineWidth = styleLine[styleId].x;
+    float halfLineWidth = styleLine[styleId].x * .5;
     vTextureId = floor(styleTextureId[styleId] / 4.0);
-
-    lineWidth *= 0.5;
 
     vec2 pos;
 
@@ -103,7 +101,7 @@ void main(void){
     vArc = vec4(0.0);
 
     // JOIN
-    float dy = lineWidth + expand;
+    float dy = halfLineWidth + expand;
     float inner = 0.0;
     if (vertexNum >= 2.) {
         dy = -dy;
@@ -148,8 +146,8 @@ void main(void){
         //TODO: BUTT here too
     }
 
-    vLine1 = vec4(0.0, lineWidth, max(abs(norm.x), abs(norm.y)), min(abs(norm.x), abs(norm.y)));
-    vLine2 = vec4(0.0, lineWidth, max(abs(norm2.x), abs(norm2.y)), min(abs(norm2.x), abs(norm2.y)));
+    vLine1 = vec4(0.0, halfLineWidth, max(abs(norm.x), abs(norm.y)), min(abs(norm.x), abs(norm.y)));
+    vLine2 = vec4(0.0, halfLineWidth, max(abs(norm2.x), abs(norm2.y)), min(abs(norm2.x), abs(norm2.y)));
 
     if (vertexNum <= 3.) { 
         // SEGMENT
@@ -164,7 +162,7 @@ void main(void){
         }
         vLine2.y = -1000.0;
         if (capType >= CAP_BUTT && capType < CAP_ROUND) {
-            float extra = step(CAP_SQUARE, capType) * lineWidth;
+            float extra = step(CAP_SQUARE, capType) * halfLineWidth;
             vec2 back = -forward;
             if (vertexNum < 0.5 || vertexNum > 2.5) {
                 pos += back * (expand + extra);
@@ -174,7 +172,7 @@ void main(void){
             }
         }
         if (type >= JOINT_CAP_BUTT && type < JOINT_CAP_SQUARE + 0.5) {
-            float extra = step(JOINT_CAP_SQUARE, type) * lineWidth;
+            float extra = step(JOINT_CAP_SQUARE, type) * halfLineWidth;
             if (vertexNum < 0.5 || vertexNum > 2.5) {
                 vLine2.y = dot(pos + base - pointB, forward) - extra;
             } else {
@@ -205,10 +203,10 @@ void main(void){
             pos = dy * norm + d2;
             vArc.x = abs(dy);
         }
-        vLine2 = vec4(0.0, lineWidth * 2.0 + 10.0, 1.0  , 0.0); // forget about line2 with type=3
+        vLine2 = vec4(0.0, halfLineWidth * 2.0 + 10.0, 1.0  , 0.0); // forget about line2 with type=3
         vArc.y = dy;
         vArc.z = 0.0;
-        vArc.w = lineWidth;
+        vArc.w = halfLineWidth;
         vType = 3.0;
     } else if (abs(D) < 0.01 && collinear < 0.5) {
         // WARNING seems unreachable
@@ -263,14 +261,14 @@ void main(void){
         if (type >= ROUND && type < ROUND + 1.5) {
             vArc.x = side * dot(pos, norm3);
             vArc.y = pos.x * norm3.y - pos.y * norm3.x;
-            vArc.z = dot(norm, norm3) * lineWidth;
-            vArc.w = lineWidth;
+            vArc.z = dot(norm, norm3) * halfLineWidth;
+            vArc.w = halfLineWidth;
             vType = 3.0;
         } else if (type >= MITER && type < MITER + 3.5) {
             vType = 1.0;
         } else if (type >= BEVEL && type < BEVEL + 1.5) {
             vType = 4.0;
-            vArc.z = dot(norm, norm3) * lineWidth - side * dot(pos, norm3);
+            vArc.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
         }
 
         dy = side * dot(pos, norm);
