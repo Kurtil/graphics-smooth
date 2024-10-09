@@ -55,7 +55,6 @@ vec2 doBisect(vec2 norm, float len, vec2 norm2, float len2,
     float dy, float inner) {
     vec2 bisect = (norm + norm2) / 2.0;
     bisect /= dot(norm, bisect);
-    vec2 shift = dy * bisect;
     if (inner > 0.5) {
         if (len < len2) {
             if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
@@ -89,8 +88,6 @@ void main(void){
     vTextureId = floor(styleTextureId[styleId] / 4.0);
 
     lineWidth *= 0.5;
-    float lineAlignment = 0.;
-    vTextureCoord = vec2(0.0);
 
     vec2 pos;
 
@@ -107,7 +104,6 @@ void main(void){
 
     // JOIN
     float dy = lineWidth + expand;
-    float shift = lineWidth * lineAlignment;
     float inner = 0.0;
     if (vertexNum >= 2.) {
         dy = -dy;
@@ -158,12 +154,12 @@ void main(void){
     if (vertexNum <= 3.) { 
         // SEGMENT
         if (abs(D) < 0.01 && collinear < 0.5) {
-            pos = (shift + dy) * norm;
+            pos = dy * norm;
         } else {
             if (flag < 0.5 && inner < 0.5) {
-                pos = (shift + dy) * norm;
+                pos = dy * norm;
             } else {
-                pos = doBisect(norm, len, norm2, len2, shift + dy, inner);
+                pos = doBisect(norm, len, norm2, len2, dy, inner);
             }
         }
         vLine2.y = -1000.0;
@@ -190,7 +186,7 @@ void main(void){
             }
         }
     } else if (type == JOINT_CAP_ROUND) {
-        base += shift * norm;
+        // CAP ROUND -> CAP SQUARE and CAP BUTT may be handled in SEGMENT during the generation of the vertex
         if (inner > 0.5) {
             dy = -dy;
             inner = 0.0;
@@ -215,8 +211,10 @@ void main(void){
         vArc.w = lineWidth;
         vType = 3.0;
     } else if (abs(D) < 0.01 && collinear < 0.5) {
+        // WARNING seems unreachable
         pos = dy * norm;
     } else {
+        // JOIN
         if (inner > 0.5) {
             dy = -dy;
             inner = 0.0;
@@ -225,39 +223,39 @@ void main(void){
         vec2 norm3 = normalize(norm + norm2);
 
         if (type >= MITER && type < MITER + 3.5) {
-            vec2 farVertex = doBisect(norm, len, norm2, len2, shift + dy, 0.0);
-            if (length(farVertex) > abs(shift + dy) * MITER_LIMIT) {
+            vec2 farVertex = doBisect(norm, len, norm2, len2, dy, 0.0);
+            if (length(farVertex) > abs(dy) * MITER_LIMIT) {
                 type = BEVEL;
             }
         }
 
         if (vertexNum < 4.5) {
-            pos = doBisect(norm, len, norm2, len2, shift - dy, 1.0);
+            pos = doBisect(norm, len, norm2, len2, - dy, 1.0);
         } else if (vertexNum < 5.5) {
-            pos = (shift + dy) * norm;
+            pos = dy * norm;
         } else if (vertexNum > 7.5) {
-            pos = (shift + dy) * norm2;
+            pos = dy * norm2;
         } else {
             if (type >= ROUND && type < ROUND + 1.5) {
-                pos = doBisect(norm, len, norm2, len2, shift + dy, 0.0);
-                float d2 = abs(shift + dy);
-                if (length(pos) > abs(shift + dy) * 1.5) {
+                pos = doBisect(norm, len, norm2, len2, dy, 0.0);
+                float d2 = abs(dy);
+                if (length(pos) > abs(dy) * 1.5) {
                     if (vertexNum < 6.5) {
-                        pos.x = (shift + dy) * norm.x - d2 * norm.y;
-                        pos.y = (shift + dy) * norm.y + d2 * norm.x;
+                        pos.x = dy * norm.x - d2 * norm.y;
+                        pos.y = dy * norm.y + d2 * norm.x;
                     } else {
-                        pos.x = (shift + dy) * norm2.x + d2 * norm2.y;
-                        pos.y = (shift + dy) * norm2.y - d2 * norm2.x;
+                        pos.x = dy * norm2.x + d2 * norm2.y;
+                        pos.y = dy * norm2.y - d2 * norm2.x;
                     }
                 }
             } else if (type >= MITER && type < MITER + 3.5) {
-                pos = doBisect(norm, len, norm2, len2, shift + dy, 0.0); //farVertex
+                pos = doBisect(norm, len, norm2, len2, dy, 0.0); //farVertex
             } else if (type >= BEVEL && type < BEVEL + 1.5) {
                 float d2 = side / resolution;
                 if (vertexNum < 6.5) {
-                    pos = (shift + dy) * norm + d2 * norm3;
+                    pos = dy * norm + d2 * norm3;
                 } else {
-                    pos = (shift + dy) * norm2 + d2 * norm3;
+                    pos = dy * norm2 + d2 * norm3;
                 }
             }
         }
@@ -265,18 +263,18 @@ void main(void){
         if (type >= ROUND && type < ROUND + 1.5) {
             vArc.x = side * dot(pos, norm3);
             vArc.y = pos.x * norm3.y - pos.y * norm3.x;
-            vArc.z = dot(norm, norm3) * (lineWidth + side * shift);
-            vArc.w = lineWidth + side * shift;
+            vArc.z = dot(norm, norm3) * lineWidth;
+            vArc.w = lineWidth;
             vType = 3.0;
         } else if (type >= MITER && type < MITER + 3.5) {
             vType = 1.0;
         } else if (type >= BEVEL && type < BEVEL + 1.5) {
             vType = 4.0;
-            vArc.z = dot(norm, norm3) * (lineWidth + side * shift) - side * dot(pos, norm3);
+            vArc.z = dot(norm, norm3) * lineWidth - side * dot(pos, norm3);
         }
 
-        dy = side * (dot(pos, norm) - shift);
-        dy2 = side * (dot(pos, norm2) - shift);
+        dy = side * dot(pos, norm);
+        dy2 = side * dot(pos, norm2);
     }
 
     pos += base;
