@@ -79,10 +79,10 @@ void main(void){
 
     /**
      * 4 first vertices are for the segment.
-     * 5 to 9 are for the join / cap.
+     * 5 to 9 are for the joint / cap.
      * Segment head is composed of the 0 and the 3 vertices.
      *
-     *       SEGMENT        JOIN / CAP
+     *       SEGMENT        JOINT / CAP
      *    0 _________ 1   5 _____6     
      *     |        /|     |    /  \     
      *     |      /  |     |   /    / 7   
@@ -102,6 +102,8 @@ void main(void){
     type -= capType * 32.0; // not changed for non-cap types, else 0 for cap round, 16 for cap butt (type == 48), 18 for cap square (type == 82)
 
     // cap round treated as the end of joint cap round
+    // note: capType: CAP_ROUND is ALWAYS paired with type: NONE (0)
+    // note: +4.0 means that the vertex starts at 4.0 for the JOIN/CAP but vertexNum initialy go from 0.0 to 3.0 ONLY. It misses the last joint/cap vertex (8).
     if (capType == CAP_ROUND) {
         vertexNum += 4.0;
         type = JOINT_CAP_ROUND;
@@ -126,19 +128,13 @@ void main(void){
     }
 
     vec2 base, next;
-    float flag = 0.0; // TODO is flag really needed?
     bool isSegmentHead = vertexNum == 0. || vertexNum == 3.;
     if (isSegmentHead) {
         next = (translationMatrix * vec3(aPrev, 1.0)).xy;
         base = pointA;
-        flag = type - floor(type / 2.0) * 2.0; // could it be anything other than 0 ?
     } else {
         next = (translationMatrix * vec3(aNext, 1.0)).xy;
         base = pointB;
-        if (type >= MITER && type < MITER + 3.5) {
-            flag = step(MITER + 1.5, type);
-            // check miter limit here?
-        }
     }
     vec2 adjacentSegment = next - base;
     float len2 = length(adjacentSegment);
@@ -170,10 +166,10 @@ void main(void){
         if (abs(D) < 0.01 && collinear < 0.5) {
             pos = dy * norm;
         } else {
-            if (flag < 0.5 && !inner) {
-                pos = dy * norm;
-            } else {
+            if (inner) {
                 pos = doBisect(norm, len, norm2, len2, dy, inner);
+            } else {
+                pos = dy * norm;
             }
         }
         vLine2.y = -1000.0;
