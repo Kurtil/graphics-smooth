@@ -51,10 +51,10 @@ uniform float styleTextureId[%MAX_STYLES%];
 uniform vec2 samplerSize[%MAX_TEXTURES%];
 
 vec2 doBisect(vec2 norm, float len, vec2 norm2, float len2,
-    float dy, float inner) {
+    float dy, bool inner) {
     vec2 bisect = (norm + norm2) / 2.0;
     bisect /= dot(norm, bisect);
-    if (inner > 0.5) {
+    if (inner) {
         if (len < len2) {
             if (abs(dy * (bisect.x * norm.y - bisect.y * norm.x)) > len) {
                 return dy * norm;
@@ -118,12 +118,11 @@ void main(void){
     vArc = vec4(0.0);
 
     float dy = halfLineWidth + expand;
-    // TODO inner should be a boolean
-    float inner = 0.0;
+    bool inner = false;
     if (vertexNum >= 2.) {
         // TODO next two lines seems only to be needed for the segment case
         dy = -dy;
-        inner = 1.0;
+        inner = true;
     }
 
     vec2 base, next;
@@ -146,7 +145,7 @@ void main(void){
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
     float D = norm.x * norm2.y - norm.y * norm2.x;
     if (D < 0.0) {
-        inner = 1.0 - inner;
+        inner = !inner;
     }
 
     norm2 *= isSegmentHead ? -1. : 1.;
@@ -171,7 +170,7 @@ void main(void){
         if (abs(D) < 0.01 && collinear < 0.5) {
             pos = dy * norm;
         } else {
-            if (flag < 0.5 && inner < 0.5) {
+            if (flag < 0.5 && !inner) {
                 pos = dy * norm;
             } else {
                 pos = doBisect(norm, len, norm2, len2, dy, inner);
@@ -202,9 +201,8 @@ void main(void){
         }
     } else if (type == JOINT_CAP_ROUND) {
         // CAP ROUND -> CAP SQUARE and CAP BUTT may be handled in SEGMENT during the generation of the vertex
-        if (inner > 0.5) {
+        if (inner) {
             dy = -dy;
-            inner = 0.0;
         }
         vec2 d2 = abs(dy) * forward;
         if (vertexNum < 4.5) {
@@ -230,29 +228,28 @@ void main(void){
         pos = dy * norm;
     } else {
         // JOIN
-        if (inner > 0.5) {
+        if (inner) {
             dy = -dy;
-            inner = 0.0;
         }
         float side = sign(dy);
         vec2 norm3 = normalize(norm + norm2);
 
         if (type >= MITER && type < MITER + 3.5) {
-            vec2 farVertex = doBisect(norm, len, norm2, len2, dy, 0.0);
+            vec2 farVertex = doBisect(norm, len, norm2, len2, dy, false);
             if (length(farVertex) > abs(dy) * MITER_LIMIT) {
                 type = BEVEL;
             }
         }
 
         if (vertexNum < 4.5) {
-            pos = doBisect(norm, len, norm2, len2, - dy, 1.0);
+            pos = doBisect(norm, len, norm2, len2, - dy, true);
         } else if (vertexNum < 5.5) {
             pos = dy * norm;
         } else if (vertexNum > 7.5) {
             pos = dy * norm2;
         } else {
             if (type >= ROUND && type < ROUND + 1.5) {
-                pos = doBisect(norm, len, norm2, len2, dy, 0.0);
+                pos = doBisect(norm, len, norm2, len2, dy, false);
                 float d2 = abs(dy);
                 if (length(pos) > abs(dy) * 1.5) {
                     if (vertexNum < 6.5) {
@@ -264,7 +261,7 @@ void main(void){
                     }
                 }
             } else if (type >= MITER && type < MITER + 3.5) {
-                pos = doBisect(norm, len, norm2, len2, dy, 0.0); //farVertex
+                pos = doBisect(norm, len, norm2, len2, dy, false); //farVertex
             } else if (type >= BEVEL && type < BEVEL + 1.5) {
                 float d2 = side / resolution;
                 if (vertexNum < 6.5) {
