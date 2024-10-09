@@ -148,7 +148,7 @@ void main(void){
     norm2 *= isSegmentHead ? -1. : 1.;
 
     bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2)) == 0.;
-    bool colinear = abs(D) < 0.5;
+    bool colinear = abs(D) < 0.01;
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
