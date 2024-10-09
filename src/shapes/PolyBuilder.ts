@@ -402,10 +402,10 @@ export class PolyBuilder implements IShapeBuilder
         {
             const prev = pn[ind * 2];
             const next = pn[(ind * 2) + 1];
-            let nx1 = (points[(next * 2) + 1] - points[(ind * 2) + 1]); let
-                ny1 = -(points[next * 2] - points[ind * 2]);
-            let nx2 = (points[(ind * 2) + 1] - points[(prev * 2) + 1]); let
-                ny2 = -(points[ind * 2] - points[prev * 2]);
+            let nx1 = (points[(next * 2) + 1] - points[(ind * 2) + 1]);
+            let ny1 = -(points[next * 2] - points[ind * 2]);
+            let nx2 = (points[(ind * 2) + 1] - points[(prev * 2) + 1]);
+            let ny2 = -(points[ind * 2] - points[prev * 2]);
             const D1 = Math.sqrt((nx1 * nx1) + (ny1 * ny1));
 
             nx1 /= D1;

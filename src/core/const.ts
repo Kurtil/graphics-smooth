@@ -9,8 +9,8 @@ export enum JOINT_TYPE
     JOINT_CAP_SQUARE = 18,
     JOINT_CAP_ROUND = 20,
     FILL_EXPAND = 24,
-    CAP_BUTT = 1 << 5,
-    CAP_SQUARE = 2 << 5,
-    CAP_ROUND = 3 << 5,
-    CAP_BUTT2 = 4 << 5,
+    CAP_BUTT = 1 << 5, // 32
+    CAP_SQUARE = 2 << 5, // 64
+    CAP_ROUND = 3 << 5, // 96
+    CAP_BUTT2 = 4 << 5, // 128
 }
