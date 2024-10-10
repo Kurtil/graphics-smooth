@@ -129,7 +129,6 @@ void main(void){
     float dy = halfLineWidth + expand;
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
-    bool isClockwise = (vertexNum >= 2.) ? !(crossProduct < 0.0) : (crossProduct < 0.0);
 
     norm2 *= isSegmentHead ? -1. : 1.;
 
@@ -159,6 +158,7 @@ void main(void){
         if (oppositeDirection) {
             pos = dy * norm;
         } else {
+            bool isClockwise = (vertexNum >= 2.) ? !(crossProduct < 0.0) : (crossProduct < 0.0);
             if (isClockwise) {
                 pos = doBisect(norm, len, norm2, len2, dy, isClockwise);
             } else {
@@ -190,6 +190,7 @@ void main(void){
         }
     } else if (type == JOINT_CAP_ROUND) {
         // from vertNum 4 to 8
+        bool isClockwise = crossProduct >= 0.0;
         if (!isClockwise) {
             dy = -dy;
         }
@@ -217,7 +218,8 @@ void main(void){
         // TODO is it reachable?
         pos = dy * norm;
     } else {
-        // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND)
+        // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
+        bool isClockwise = crossProduct >= 0.0;
         if (!isClockwise) {
             dy = -dy;
         }
