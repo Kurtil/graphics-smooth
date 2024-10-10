@@ -126,7 +126,6 @@ void main(void){
     vec2 adjacentSegment = next - base;
     float len2 = length(adjacentSegment);
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
-    float dy = halfLineWidth + expand;
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
 
@@ -147,6 +146,7 @@ void main(void){
     vArc = vec4(0.0);
 
     vec2 pos;
+    float dy = halfLineWidth + expand;
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
