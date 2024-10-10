@@ -131,7 +131,7 @@ void main(void){
     bool isInnerVertex = vertexNum >= 2. ? crossProduct >= 0.0 : crossProduct < 0.0;
 
     bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
-    bool colinear = abs(crossProduct) < 0.1;
+    bool colinear = abs(crossProduct) < 0.01;
 
     norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration
 
