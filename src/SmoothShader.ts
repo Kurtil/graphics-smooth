@@ -3,9 +3,9 @@ import { IGraphicsBatchSettings } from './core/BatchDrawCall';
 
 const smoothVert = `#version 100
 precision highp float;
-const float BEVEL = 4.0;
-const float MITER = 8.0;
-const float ROUND = 12.0;
+const float JOINT_BEVEL = 4.0;
+const float JOINT_MITER = 8.0;
+const float JOINT_ROUND = 12.0;
 const float JOINT_CAP_BUTT = 16.0;
 const float JOINT_CAP_SQUARE = 18.0;
 const float JOINT_CAP_ROUND = 20.0;
@@ -115,6 +115,8 @@ void main(void){
     vTextureId = floor(styleTextureId[styleId] / 4.0);
 
     vec2 pos;
+
+    // AA
     vLine1 = vec4(0.0, 10.0, 1.0, 0.0);
     vLine2 = vec4(0.0, 10.0, 1.0, 0.0);
     vArc = vec4(0.0);
@@ -146,7 +148,7 @@ void main(void){
     vType = 0.0;
     float dy2 = -1000.0;
 
-    if (oppositeDirection && type == ROUND) {
+    if (oppositeDirection && type == JOINT_ROUND) {
         type = JOINT_CAP_ROUND;
     }
 
@@ -225,10 +227,10 @@ void main(void){
         float side = sign(dy);
         vec2 norm3 = normalize(norm + norm2);
 
-        if (type == MITER) {
+        if (type == JOINT_MITER) {
             vec2 farVertex = doBisect(norm, len, norm2, len2, dy, false);
             if (length(farVertex) > abs(dy) * MITER_LIMIT) {
-                type = BEVEL;
+                type = JOINT_BEVEL;
             }
         }
 
@@ -240,7 +242,7 @@ void main(void){
             pos = dy * norm2;
         } else {
             // vertexNum 6 or 7
-            if (type == ROUND) {
+            if (type == JOINT_ROUND) {
                 pos = doBisect(norm, len, norm2, len2, dy, false);
                 float d2 = abs(dy);
                 if (length(pos) > abs(dy) * 1.5) {
@@ -252,9 +254,9 @@ void main(void){
                         pos.y = dy * norm2.y - d2 * norm2.x;
                     }
                 }
-            } else if (type == MITER) {
+            } else if (type == JOINT_MITER) {
                 pos = doBisect(norm, len, norm2, len2, dy, false); //farVertex
-            } else if (type == BEVEL) {
+            } else if (type == JOINT_BEVEL) {
                 float d2 = side / resolution;
                 if (vertexNum == 6.) {
                     pos = dy * norm + d2 * norm3;
@@ -264,15 +266,15 @@ void main(void){
             }
         }
 
-        if (type == ROUND) {
+        if (type == JOINT_ROUND) {
             vArc.x = side * dot(pos, norm3);
             vArc.y = pos.x * norm3.y - pos.y * norm3.x;
             vArc.z = dot(norm, norm3) * halfLineWidth;
             vArc.w = halfLineWidth;
             vType = 3.0;
-        } else if (type == MITER) {
+        } else if (type == JOINT_MITER) {
             vType = 1.0;
-        } else if (type == BEVEL) {
+        } else if (type == JOINT_BEVEL) {
             vType = 4.0;
             vArc.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
         }
