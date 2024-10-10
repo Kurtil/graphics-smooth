@@ -128,9 +128,10 @@ void main(void){
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
+    bool isInnerVertex = vertexNum >= 2. ? crossProduct >= 0.0 : crossProduct < 0.0;
 
     bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
-    bool colinear = abs(crossProduct) < 0.01;
+    bool colinear = abs(crossProduct) < 0.1;
 
     norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration
 
@@ -158,9 +159,8 @@ void main(void){
         if (oppositeDirection) {
             pos = dy * norm;
         } else {
-            bool isClockwise = vertexNum >= 2. ? crossProduct >= 0.0 : crossProduct < 0.0;
-            if (isClockwise) {
-                pos = doBisect(norm, len, norm2, len2, dy, isClockwise);
+            if (isInnerVertex) {
+                pos = doBisect(norm, len, norm2, len2, dy, true);
             } else {
                 pos = dy * norm;
             }
@@ -190,8 +190,8 @@ void main(void){
         }
     } else if (type == JOINT_CAP_ROUND) {
         // from vertNum 4 to 8
-        bool isClockwise = crossProduct >= 0.0;
-        if (!isClockwise) {
+        if (!isInnerVertex) {
+            // TODO next line seems to have no effect
             dy = -dy;
         }
         vec2 d2 = abs(dy) * forward;
@@ -219,8 +219,7 @@ void main(void){
         pos = dy * norm;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
-        bool isClockwise = crossProduct >= 0.0;
-        if (!isClockwise) {
+        if (!isInnerVertex) {
             dy = -dy;
         }
         float side = sign(dy);
