@@ -1,55 +1,49 @@
-<html><head><style>body,html{margin:0px;height:100%;overflow:hidden;}</style></head>
+<html>
+
+<head>
+  <style>
+    body,
+    html {
+      margin: 0px;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
 <body>
-<script src="https://pixijs.download/v7.4.2/pixi-legacy.js"></script>
-<!-- <script src="https://pixijs.download/dev/packages/graphics-extras.js"></script> -->
-<script src="./dist/pixi-graphics-smooth.js"></script>
-<script>
-const app = new PIXI.Application({ antialias: false,
-    width: 800, height: 200 * 2,
-    autoDensity: true, resolution: 1.0,
-});
-document.body.appendChild(app.view);
+  <script src="https://pixijs.download/v7.4.2/pixi-legacy.js"></script>
+  <!-- <script src="https://pixijs.download/dev/packages/graphics-extras.js"></script> -->
+  <script src="./dist/pixi-graphics-smooth.js"></script>
+  <script>
+    const app = new PIXI.Application({
+      antialias: false,
+      width: 800,
+      height: 200 * 2,
+      autoDensity: true,
+      resolution: 1.0,
+    });
+    document.body.appendChild(app.view);
 
-PIXI.smooth.SmoothGraphics.prototype.drawStar = PIXI.Graphics.prototype.drawStar;
+    PIXI.smooth.SmoothGraphics.prototype.drawStar = PIXI.Graphics.prototype.drawStar;
 
-const graphics = new PIXI.smooth.SmoothGraphics();
+    const graphics = new PIXI.smooth.SmoothGraphics();
 
-const path1 = [20, 20, 100, 100, 200, 20];
-const polygone = new PIXI.Polygon(path1);
-polygone.closeStroke = false;
+    const path1 = [10, 10, 200, 200, 300, 30, 400, 40];
+    const polygone = new PIXI.Polygon(path1);
+    polygone.closeStroke = false;
 
-graphics.lineStyle({
-  width: 4,
-  color: 0x0000ff,
-  cap: PIXI.LINE_CAP.BUTT,
-  join: PIXI.LINE_JOIN.BEVEL,
-});
-graphics.drawShape(polygone);
+    graphics.lineStyle({
+      width: 4,
+      color: 0x0000ff,
+      cap: PIXI.LINE_CAP.ROUND,
+      join: PIXI.LINE_JOIN.ROUND,
+    });
 
-const path2 = [120, 120, 200, 200, 300, 120];
-const polygone2 = new PIXI.Polygon(path2);
-polygone2.closeStroke = false;
+    graphics.drawShape(polygone);
 
-graphics.lineStyle({
-  width: 1,
-  color: 0xff0000,
-  cap: PIXI.LINE_CAP.BUTT,
-  join: PIXI.LINE_JOIN.BEVEL,
-});
-graphics.drawShape(polygone2);
+    app.stage.addChild(graphics);
+  </script>
+</body>
 
-const path3 = [220, 220, 300, 300, 400, 220];
-const polygone3 = new PIXI.Polygon(path3);
-polygone3.closeStroke = false;
-
-graphics.lineStyle({
-  width: 6,
-  color: 0x00ff00,
-  cap: PIXI.LINE_CAP.BUTT,
-  join: PIXI.LINE_JOIN.BEVEL,
-});
-graphics.drawShape(polygone3);
-
-app.stage.addChild(graphics);
-</script>
-</body></html>
+</html>
