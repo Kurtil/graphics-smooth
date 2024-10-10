@@ -130,7 +130,7 @@ void main(void){
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
 
-    bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2) * (isSegmentHead ? -1. : 1.)) == 0.;
+    bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
     bool colinear = abs(crossProduct) < 0.01;
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
