@@ -114,13 +114,6 @@ void main(void){
     float halfLineWidth = styleLine[styleId].x / 2.;
     vTextureId = floor(styleTextureId[styleId] / 4.0);
 
-    vec2 pos;
-
-    // AA
-    vLine1 = vec4(0.0, 10.0, 1.0, 0.0);
-    vLine2 = vec4(0.0, 10.0, 1.0, 0.0);
-    vArc = vec4(0.0);
-
     vec2 base, next;
     bool isSegmentHead = vertexNum == 0. || vertexNum == 3.;
     if (isSegmentHead) {
@@ -145,18 +138,21 @@ void main(void){
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
-    vType = 0.0;
-    float dy2 = -1000.0;
-
     if (oppositeDirection && type == JOINT_ROUND) {
         type = JOINT_CAP_ROUND;
     }
 
+    // AA
+    vType = 0.0;
+    float dy2 = -1000.0;
     vLine1 = vec4(0.0, halfLineWidth, max(abs(norm.x), abs(norm.y)), min(abs(norm.x), abs(norm.y)));
     vLine2 = vec4(0.0, halfLineWidth, max(abs(norm2.x), abs(norm2.y)), min(abs(norm2.x), abs(norm2.y)));
+    vArc = vec4(0.0);
+
+    vec2 pos;
 
     if (vertexNum <= 3.) { 
-        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT CAP BUTT OR JOINT CAP SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
+        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
         if (vertexNum >= 2.) {
             dy = -dy;
         }
@@ -193,6 +189,7 @@ void main(void){
             }
         }
     } else if (type == JOINT_CAP_ROUND) {
+        // from vertNum 4 to 8
         if (!isClockwise) {
             dy = -dy;
         }
