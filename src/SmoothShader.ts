@@ -132,6 +132,8 @@ void main(void){
     bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
     bool colinear = abs(crossProduct) < 0.01;
 
+    norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration
+
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
     if (oppositeDirection && type == JOINT_ROUND) {
@@ -150,14 +152,13 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
-        norm2 *= isSegmentHead ? -1. : 1.;
         if (vertexNum >= 2.) {
             dy = -dy;
         }
         if (oppositeDirection) {
             pos = dy * norm;
         } else {
-            bool isClockwise = (vertexNum >= 2.) ? !(crossProduct < 0.0) : (crossProduct < 0.0);
+            bool isClockwise = vertexNum >= 2. ? crossProduct >= 0.0 : crossProduct < 0.0;
             if (isClockwise) {
                 pos = doBisect(norm, len, norm2, len2, dy, isClockwise);
             } else {
