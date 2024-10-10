@@ -214,6 +214,9 @@ void main(void){
         vArc.z = 0.0;
         vArc.w = halfLineWidth;
         vType = 3.0;
+    } else if (oppositeDirection) {
+        // TODO is it reachable?
+        pos = dy * norm;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND)
         if (!isClockwise) {
