@@ -119,14 +119,6 @@ void main(void){
     vLine2 = vec4(0.0, 10.0, 1.0, 0.0);
     vArc = vec4(0.0);
 
-    float dy = halfLineWidth + expand;
-    bool inner = false;
-    // TODO this if branch seems only to be needed for the segment case
-    if (vertexNum >= 2.) {
-        dy = -dy;
-        inner = true;
-    }
-
     vec2 base, next;
     bool isSegmentHead = vertexNum == 0. || vertexNum == 3.;
     if (isSegmentHead) {
@@ -139,16 +131,15 @@ void main(void){
     vec2 adjacentSegment = next - base;
     float len2 = length(adjacentSegment);
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
-    float D = norm.x * norm2.y - norm.y * norm2.x;
-    if (D < 0.0) {
-        // norm2 clockwise to norm
-        inner = !inner;
-    }
+    float dy = halfLineWidth + expand;
+
+    float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
+    bool isClockwise = (vertexNum >= 2.) ? !(crossProduct < 0.0) : (crossProduct < 0.0);
 
     norm2 *= isSegmentHead ? -1. : 1.;
 
     bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2)) == 0.;
-    bool colinear = abs(D) < 0.01;
+    bool colinear = abs(crossProduct) < 0.01;
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
@@ -164,11 +155,14 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT CAP BUTT OR JOINT CAP SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
+        if (vertexNum >= 2.) {
+            dy = -dy;
+        }
         if (oppositeDirection) {
             pos = dy * norm;
         } else {
-            if (inner) {
-                pos = doBisect(norm, len, norm2, len2, dy, inner);
+            if (isClockwise) {
+                pos = doBisect(norm, len, norm2, len2, dy, isClockwise);
             } else {
                 pos = dy * norm;
             }
@@ -197,7 +191,7 @@ void main(void){
             }
         }
     } else if (type == JOINT_CAP_ROUND) {
-        if (inner) {
+        if (!isClockwise) {
             dy = -dy;
         }
         vec2 d2 = abs(dy) * forward;
@@ -222,7 +216,7 @@ void main(void){
         vType = 3.0;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND)
-        if (inner) {
+        if (!isClockwise) {
             dy = -dy;
         }
         float side = sign(dy);
