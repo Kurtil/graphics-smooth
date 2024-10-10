@@ -130,9 +130,7 @@ void main(void){
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
 
-    norm2 *= isSegmentHead ? -1. : 1.;
-
-    bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2)) == 0.;
+    bool isAngleBetweenSegmentsObtus = step(0.0, dot(norm, norm2) * (isSegmentHead ? -1. : 1.)) == 0.;
     bool colinear = abs(crossProduct) < 0.01;
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
@@ -152,6 +150,7 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
+        norm2 *= isSegmentHead ? -1. : 1.;
         if (vertexNum >= 2.) {
             dy = -dy;
         }
