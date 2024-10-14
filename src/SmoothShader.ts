@@ -1,7 +1,7 @@
 import { Program, Shader } from '@pixi/core';
 import { IGraphicsBatchSettings } from './core/BatchDrawCall';
 
-const smoothVert = `#version 100
+const smoothVert = `#version 300 es
 precision highp float;
 const float JOINT_BEVEL = 4.0;
 const float JOINT_MITER = 8.0;
@@ -17,33 +17,33 @@ const float CAP_ROUND = 3.0;
 const float MITER_LIMIT = 10.0;
 
 // === geom ===
-attribute vec2 aPrev;
-attribute vec2 aPoint1;
-attribute vec2 aPoint2;
-attribute vec2 aNext;
-attribute float aVertexJoint;
-attribute float aTravel;
+in vec2 aPrev;
+in vec2 aPoint1;
+in vec2 aPoint2;
+in vec2 aNext;
+in float aVertexJoint;
+in float aTravel;
 
 uniform mat3 projectionMatrix;
 uniform mat3 translationMatrix;
 uniform vec4 tint;
 
-varying vec4 vLine1;
-varying vec4 vLine2;
-varying vec4 vArc;
-varying float vType;
+out vec4 vLine1;
+out vec4 vLine2;
+out vec4 vArc;
+out float vType;
 
 uniform float resolution;
 uniform float expand;
 
 // === style ===
-attribute float aStyleId;
-attribute vec4 aColor;
+in float aStyleId;
+in vec4 aColor;
 
-varying float vTextureId;
-varying vec4 vColor;
-varying vec2 vTextureCoord;
-varying vec2 vTravel;
+out float vTextureId;
+out vec4 vColor;
+out vec2 vTextureCoord;
+out vec2 vTravel;
 
 uniform vec2 styleLine[%MAX_STYLES%];
 uniform vec3 styleMatrix[2 * %MAX_STYLES%];
@@ -75,7 +75,7 @@ void main(void){
     vec2 segment = pointB - pointA;
     float len = length(segment);
     vec2 forward = segment / len;
-    vec2 norm = vec2(forward.y, -forward.x);
+    vec2 norm = vec2(forward.y, -forward.x); // clockwise 90 degrees rotation
 
     /**
      * 4 first vertices are for the segment.
@@ -83,15 +83,21 @@ void main(void){
      * Segment head is composed of the 0 and the 3 vertices.
      *
      *       SEGMENT        JOINT / CAP
-     *    0 _________ 1   5 _____6     
+     *    3 _________ 2   5 _____6     
      *     |        /|     |    /  \     
      *     |      /  |     |   /    / 7   
-     *     |    /    |     |  /   /  |    
+     *     A    /    B     |  /   /  |    
      *     |  /      |     | / /     |   
      *     |/________|     |/_______ |  
-     *    3           2   4           8
+     *    0           1   4           8
      *    ^
      *   HEAD 
+     *
+     *  ^ y
+     *  |
+     *  |---> x
+     * 
+     * ( before projection, y is then inverted )
      *
      */
 
@@ -125,10 +131,10 @@ void main(void){
     }
     vec2 adjacentSegment = next - base;
     float len2 = length(adjacentSegment);
-    vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2;
+    vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2; // clockwise 90 degrees rotation
 
     float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
-    bool isInnerVertex = vertexNum >= 2. ? crossProduct >= 0.0 : crossProduct < 0.0;
+    bool isInnerVertex = vertexNum >= 2. ? crossProduct < 0.0 : crossProduct >= 0.0;
 
     bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
     bool colinear = abs(crossProduct) < 0.01;
@@ -153,12 +159,14 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
-        if (vertexNum >= 2.) {
+        if (vertexNum < 2.) {
             dy = -dy;
         }
         if (oppositeDirection) {
+            // terminal segment
             pos = dy * norm;
         } else {
+            // intermediate segment
             if (isInnerVertex) {
                 pos = doBisect(norm, len, norm2, len2, dy, true);
             } else {
@@ -190,7 +198,7 @@ void main(void){
         }
     } else if (type == JOINT_CAP_ROUND) {
         // from vertNum 4 to 8
-        if (!isInnerVertex) {
+        if (isInnerVertex) {
             // TODO next line seems to have no effect
             dy = -dy;
         }
@@ -219,7 +227,7 @@ void main(void){
         pos = dy * norm;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
-        if (!isInnerVertex) {
+        if (isInnerVertex) {
             dy = -dy;
         }
         float side = sign(dy);
@@ -292,7 +300,7 @@ void main(void){
     vColor = aColor * tint;
 }`;
 
-const precision = `#version 100
+const precision = `#version 300 es
 #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
 #else
@@ -301,15 +309,17 @@ const precision = `#version 100
 `;
 
 const smoothFrag = `%PRECISION%
-varying vec4 vColor;
-varying vec4 vLine1;
-varying vec4 vLine2;
-varying vec4 vArc;
-varying float vType;
-varying float vTextureId;
-varying vec2 vTextureCoord;
-varying vec2 vTravel;
+in vec4 vColor;
+in vec4 vLine1;
+in vec4 vLine2;
+in vec4 vArc;
+in float vType;
+in float vTextureId;
+in vec2 vTextureCoord;
+in vec2 vTravel;
 uniform sampler2D uSamplers[%MAX_TEXTURES%];
+
+out vec4 color;
 
 %PIXEL_LINE%
 
@@ -320,7 +330,7 @@ void main(void){
     float textureId = floor(vTextureId+0.5);
     %FOR_LOOP%
 
-    gl_FragColor = vColor * texColor * alpha;
+    color = vColor * texColor * alpha;
 }
 `;
 
@@ -460,7 +470,7 @@ export class SmoothGraphicsShader extends Shader
             }
 
             src += '\n{';
-            src += `\n\ttexColor = texture2D(uSamplers[${i}], vTextureCoord);`;
+            src += `\n\ttexColor = texture(uSamplers[${i}], vTextureCoord);`;
             src += '\n}';
         }
 
