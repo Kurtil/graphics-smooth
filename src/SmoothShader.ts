@@ -126,8 +126,8 @@ void main(void){
     vec2 base, next;
     bool isSegmentHead = vertexNum == 0. || vertexNum == 3.;
     if (isSegmentHead) {
-        next = (translationMatrix * vec3(aPrev, 1.0)).xy;
-        base = pointA;
+        next = pointA;
+        base = (translationMatrix * vec3(aPrev, 1.0)).xy;
     } else {
         next = (translationMatrix * vec3(aNext, 1.0)).xy;
         base = pointB;
@@ -138,7 +138,7 @@ void main(void){
 
     float crossProduct = norm.x * norm2.y - norm.y * norm2.x;
 
-    bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
+    bool isAngleBetweenSegmentsObtus = dot(norm, norm2) < 0.;
     bool colinear = abs(crossProduct) < 0.01;
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
@@ -159,7 +159,6 @@ void main(void){
 
     if (vertexNum <= 3.) { 
         // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP_*, JOINT_CAP_ROUND has 8). Also handle the segment head CAP_BUTT and CAP_SQUARE.
-        norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration or remove it
         bool isVertexSegmentLeftSide = vertexNum < 2.;
         if (isVertexSegmentLeftSide) {
             dy = -dy;
@@ -170,6 +169,9 @@ void main(void){
         } else {
             // intermediate segments
             bool isInnerVertex = isVertexSegmentLeftSide ? crossProduct >= 0.0 : crossProduct < 0.0;
+            if (isSegmentHead) {
+                isInnerVertex = !isInnerVertex;
+            }
             if (isInnerVertex) {
                 pos = doBisect(norm, len, norm2, len2, dy, true);
             } else {
@@ -186,14 +188,14 @@ void main(void){
                 dy2 = expand;
             } else {
                 // TODO is it reachable or useful as this branch may not handle cap vertex?
-                dy2 = dot(pos + base - pointA, back) - extra;
+                dy2 = dot(pos + pointB - pointA, back) - extra;
             }
         }
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
             float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
             if (isSegmentHead) {
                 // TODO is it reachable or useful as this branch may not handle cap vertex?
-                vLine2.y = dot(pos + base - pointB, forward) - extra;
+                vLine2.y = dot(pos + pointA - pointB, forward) - extra;
             } else {
                 pos += forward * (expand + extra);
                 vLine2.y = expand;
@@ -294,7 +296,7 @@ void main(void){
         dy2 = side * dot(pos, norm2);
     }
 
-    pos += base;
+    pos += isSegmentHead ? pointA : pointB;
     vLine1.xy = vec2(dy, vLine1.y) * resolution;
     vLine2.xy = vec2(dy2, vLine2.y) * resolution;
     vArc = vArc * resolution;
