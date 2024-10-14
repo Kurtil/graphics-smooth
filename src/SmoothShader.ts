@@ -79,17 +79,20 @@ void main(void){
 
     /**
      * 4 first vertices are for the segment.
+     * O to 3 clockwise from pointA to pointB.
+     * Segment Head is composed of 0 and 3.
+     *
      * 5 to 9 are for the joint / cap.
-     * Segment head is composed of the 0 and the 3 vertices.
+     * id:4 always represent the joint inner vertex.
      *
      *       SEGMENT        JOINT / CAP
-     *    3 _________ 2   5 _____6     
+     *    0 _________ 1   5 _____6     
      *     |        /|     |    /  \     
      *     |      /  |     |   /    / 7   
      *     A    /    B     |  /   /  |    
      *     |  /      |     | / /     |   
      *     |/________|     |/_______ |  
-     *    0           1   4           8
+     *    3           2   4           8
      *    ^
      *   HEAD 
      *
@@ -97,7 +100,7 @@ void main(void){
      *  |
      *  |---> x
      * 
-     * ( before projection, y is then inverted )
+     * ( before projection, y is then inverted : important for the cross product sign )
      *
      */
 
