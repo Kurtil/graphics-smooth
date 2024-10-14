@@ -136,13 +136,10 @@ void main(void){
     float len2 = length(adjacentSegment);
     vec2 norm2 = vec2(adjacentSegment.y, -adjacentSegment.x) / len2; // clockwise 90 degrees rotation
 
-    float crossProduct = cross(vec3(norm, 0.0), vec3(norm2, 0.0)).z;
-    bool isInnerVertex = vertexNum >= 2. ? crossProduct < 0.0 : crossProduct >= 0.0;
+    float crossProduct = norm.x * norm2.y - norm.y * norm2.x;
 
     bool isAngleBetweenSegmentsObtus = dot(norm, norm2) * (isSegmentHead ? -1. : 1.) < 0.;
     bool colinear = abs(crossProduct) < 0.01;
-
-    norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration
 
     bool oppositeDirection = colinear && isAngleBetweenSegmentsObtus;
 
@@ -161,15 +158,18 @@ void main(void){
     float dy = halfLineWidth + expand;
 
     if (vertexNum <= 3.) { 
-        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP, JOINT_CAP_ROUND has 8)
-        if (vertexNum < 2.) {
+        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP_*, JOINT_CAP_ROUND has 8). Also handle the segment head CAP_BUTT and CAP_SQUARE.
+        norm2 *= isSegmentHead ? -1. : 1.; // TODO move this line just after the norm2 declaration or remove it
+        bool isVertexSegmentLeftSide = vertexNum < 2.;
+        if (isVertexSegmentLeftSide) {
             dy = -dy;
         }
         if (oppositeDirection) {
-            // terminal segment
+            // terminal segments (and overlapping intermediate segments)
             pos = dy * norm;
         } else {
-            // intermediate segment
+            // intermediate segments
+            bool isInnerVertex = isVertexSegmentLeftSide ? crossProduct >= 0.0 : crossProduct < 0.0;
             if (isInnerVertex) {
                 pos = doBisect(norm, len, norm2, len2, dy, true);
             } else {
@@ -177,6 +177,7 @@ void main(void){
             }
         }
         vLine2.y = -1000.0;
+        // CAP_BUTT and CAP_SQUARE
         if (capType == CAP_BUTT || capType == CAP_SQUARE) {
             float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
             vec2 back = -forward;
@@ -184,27 +185,27 @@ void main(void){
                 pos += back * (expand + extra);
                 dy2 = expand;
             } else {
+                // TODO is it reachable or useful as this branch may not handle cap vertex?
                 dy2 = dot(pos + base - pointA, back) - extra;
             }
         }
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
             float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
             if (isSegmentHead) {
+                // TODO is it reachable or useful as this branch may not handle cap vertex?
                 vLine2.y = dot(pos + base - pointB, forward) - extra;
             } else {
                 pos += forward * (expand + extra);
                 vLine2.y = expand;
                 if (capType != 0.) {
+                    // CAP_SQUARE or CAP_BUTT are possible here
                     dy2 -= expand + extra;
                 }
             }
         }
-    } else if (type == JOINT_CAP_ROUND) {
+    }
+        else if (type == JOINT_CAP_ROUND) {
         // from vertNum 4 to 8
-        if (isInnerVertex) {
-            // TODO next line seems to have no effect
-            dy = -dy;
-        }
         vec2 d2 = abs(dy) * forward;
         if (vertexNum == 4.) {
             dy = -dy;
@@ -215,7 +216,7 @@ void main(void){
             pos = dy * norm + d2;
             vArc.x = abs(dy);
         } else {
-            // vertexNum 7 or 8
+            // vertexNum 7 or 8, merged as the same case
             dy = -dy;
             pos = dy * norm + d2;
             vArc.x = abs(dy);
@@ -230,6 +231,7 @@ void main(void){
         pos = dy * norm;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
+        bool isInnerVertex = crossProduct < 0.0;
         if (isInnerVertex) {
             dy = -dy;
         }
