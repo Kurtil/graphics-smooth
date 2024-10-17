@@ -28,8 +28,8 @@ uniform mat3 projectionMatrix;
 uniform mat3 translationMatrix;
 uniform vec4 tint;
 
-out vec4 vLine1;
-out vec4 vLine2;
+out vec2 vLine1;
+out vec2 vLine2;
 out vec4 vArc;
 out float vType;
 
@@ -150,8 +150,19 @@ void main(void){
     // AA
     vType = 0.0;
     float dy2 = -1000.0;
-    vLine1 = vec4(0.0, halfLineWidth, max(abs(norm.x), abs(norm.y)), min(abs(norm.x), abs(norm.y)));
-    vLine2 = vec4(0.0, halfLineWidth, max(abs(norm2.x), abs(norm2.y)), min(abs(norm2.x), abs(norm2.y)));
+
+    /**
+     * Used to AA the segment sides.
+     * @type { vec2(d: float, w: float) } d: signed distance to the center line, w: half line width
+     */
+    vLine1 = vec2(0.0, halfLineWidth);
+
+    /**
+     * Used to AA the segment caps (head and tail).
+     * @type { vec2(x: float, y: float) } x: aa value for the segment head, y: aa value for the segment tail
+     * x and y goes from expand to -segment side length.
+     */
+    vLine2 = vec2(0.0, halfLineWidth);
     vArc = vec4(0.0);
 
     vec2 pos;
@@ -184,24 +195,23 @@ void main(void){
             float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
             vec2 back = -forward;
             if (isSegmentHead) {
-                pos += back * (expand + extra);
+                // position is updated only for the segment head to handle the cap
+                pos += back * (extra + expand);
                 dy2 = expand;
             } else {
-                // TODO is it reachable or useful as this branch may not handle cap vertex?
-                dy2 = dot(pos + pointB - pointA, back) - extra;
+                dy2 = dot(segment + pos, back);
             }
         }
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
             float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
             if (isSegmentHead) {
-                // TODO is it reachable or useful as this branch may not handle cap vertex?
-                vLine2.y = dot(pos + pointA - pointB, forward) - extra;
+                vLine2.y = dot(-segment + pos, forward) - extra;
             } else {
-                pos += forward * (expand + extra);
+                pos += forward * (extra + expand);
                 vLine2.y = expand;
                 if (capType != 0.) {
-                    // CAP_SQUARE or CAP_BUTT are possible here
-                    dy2 -= expand + extra;
+                    // CAP_SQUARE or CAP_BUTT are possible here when the line is one segment long with caps on both sides. dy2 must take into account the cap on segment tail.
+                    dy2 -= extra + expand;
                 }
             }
         }
@@ -297,8 +307,8 @@ void main(void){
     }
 
     pos += isSegmentHead ? pointA : pointB;
-    vLine1.xy = vec2(dy, vLine1.y) * resolution;
-    vLine2.xy = vec2(dy2, vLine2.y) * resolution;
+    vLine1 = vec2(dy, vLine1.y) * resolution;
+    vLine2 = vec2(dy2, vLine2.y) * resolution;
     vArc = vArc * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
@@ -317,8 +327,8 @@ const precision = `#version 300 es
 
 const smoothFrag = `%PRECISION%
 in vec4 vColor;
-in vec4 vLine1;
-in vec4 vLine2;
+in vec2 vLine1;
+in vec2 vLine2;
 in vec4 vArc;
 in float vType;
 in float vTextureId;
@@ -376,10 +386,13 @@ if (vType == 0.) {
     // SEGMENT
         float left = pixelLine(signedDistance - halfWidth); // only close to 1 at the right of the line, else 0
         float right = pixelLine(signedDistance + halfWidth);  // only close to 0 at the left of the line, else 1        
-    float near = vLine2.x - 0.5;
-    float far = min(vLine2.x + 0.5, 0.0);
+    
     float top = vLine2.y - 0.5;
     float bottom = min(vLine2.y + 0.5, 0.0);
+
+    float near = vLine2.x - 0.5;
+    float far = min(vLine2.x + 0.5, 0.0);
+
     alpha = (right - left) * max(bottom - top, 0.0) * max(far - near, 0.0);
 } else if (vType == 1.) {
     // MITER
