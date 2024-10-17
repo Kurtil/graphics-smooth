@@ -341,46 +341,59 @@ void main(void){
 }
 `;
 
-const pixelLineFunc = [`
-float pixelLine(float x, float A, float B) {
-    return clamp(x + 0.5, 0.0, 1.0);
+const pixelLineFunc = `
+
+
+/**
+ * Returns the pixel coverage from a half-plane.
+ * x is the right edge of the half-plane.
+ * ex:
+ * - if x = 0, the half plane covers the left half of the pixel.
+ * - if x = .5, the half plane covers the full pixel.
+ * - if x = -.5, the half plane covers nothing.
+ *
+ *       |-----------|
+ *       |           |
+ *       |     .     |
+ *       |           |
+ *       |-----------|
+ * 
+ *  ---(-.5)---0---(+.5)--> x       
+ * 
+ * @param {float} x - right edge of the half-plane
+ * @return {float} pixel coverage [0, 1]
+ */
+float pixelLine(float x) {
+    return clamp(x + .5, 0.0, 1.);
 }
-`, `
-float pixelLine(float x, float A, float B) {
-    float y = abs(x), s = sign(x);
-    if (y * 2.0 < A - B) {
-        return 0.5 + s * y / A;
-    }
-    y -= (A - B) * 0.5;
-    y = max(1.0 - y / B, 0.0);
-    return (1.0 + s * (1.0 - y * y)) * 0.5;
-    //return clamp(x + 0.5, 0.0, 1.0);
-}
-`];
+`;
 
 const pixelCoverage = `float alpha = 1.0;
-if (vType < 0.5) {
+float signedDistance = vLine1.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
+float halfWidth = vLine1.y; 
+
+if (vType == 0.) {
     // SEGMENT
-    float left = pixelLine(-vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float right = pixelLine(vLine1.y - vLine1.x, vLine1.z, vLine1.w);
+        float left = pixelLine(signedDistance - halfWidth); // only close to 1 at the right of the line, else 0
+        float right = pixelLine(signedDistance + halfWidth);  // only close to 0 at the left of the line, else 1        
     float near = vLine2.x - 0.5;
     float far = min(vLine2.x + 0.5, 0.0);
     float top = vLine2.y - 0.5;
     float bottom = min(vLine2.y + 0.5, 0.0);
     alpha = (right - left) * max(bottom - top, 0.0) * max(far - near, 0.0);
-} else if (vType < 1.5) {
+} else if (vType == 1.) {
     // MITER
-    float a1 = pixelLine(- vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float a2 = pixelLine(vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float b1 = pixelLine(- vLine2.y - vLine2.x, vLine2.z, vLine2.w);
-    float b2 = pixelLine(vLine2.y - vLine2.x, vLine2.z, vLine2.w);
+    float a1 = pixelLine(- halfWidth - signedDistance);
+    float a2 = pixelLine(halfWidth - signedDistance);
+    float b1 = pixelLine(- vLine2.y - vLine2.x);
+    float b2 = pixelLine(vLine2.y - vLine2.x);
     alpha = a2 * b2 - a1 * b1;
-} else if (vType < 3.5) {
+} else if (vType == 3.) {
     // ROUND
-    float a1 = pixelLine(- vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float a2 = pixelLine(vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float b1 = pixelLine(- vLine2.y - vLine2.x, vLine2.z, vLine2.w);
-    float b2 = pixelLine(vLine2.y - vLine2.x, vLine2.z, vLine2.w);
+    float a1 = pixelLine(- halfWidth - signedDistance);
+    float a2 = pixelLine(halfWidth - signedDistance);
+    float b1 = pixelLine(- vLine2.y - vLine2.x);
+    float b2 = pixelLine(vLine2.y - vLine2.x);
     float alpha_miter = a2 * b2 - a1 * b1;
     float alpha_plane = clamp(vArc.z - vArc.x + 0.5, 0.0, 1.0);
     float d = length(vArc.xy);
@@ -388,12 +401,12 @@ if (vType < 0.5) {
     float circle_vert = min(vArc.w * 2.0, 1.0);
     float alpha_circle = circle_hor * circle_vert;
     alpha = min(alpha_miter, max(alpha_circle, alpha_plane));
-} else {
+} else if (vType == 4.) {
     // BEVEL
-    float a1 = pixelLine(- vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float a2 = pixelLine(vLine1.y - vLine1.x, vLine1.z, vLine1.w);
-    float b1 = pixelLine(- vLine2.y - vLine2.x, vLine2.z, vLine2.w);
-    float b2 = pixelLine(vLine2.y - vLine2.x, vLine2.z, vLine2.w);
+    float a1 = pixelLine(- halfWidth - signedDistance);
+    float a2 = pixelLine(halfWidth - signedDistance);
+    float b1 = pixelLine(- vLine2.y - vLine2.x);
+    float b2 = pixelLine(vLine2.y - vLine2.x);
     alpha = a2 * b2 - a1 * b1;
     alpha *= clamp(vArc.z + 0.5, 0.0, 1.0);
 }
@@ -449,7 +462,7 @@ export class SmoothGraphicsShader extends Shader
         const { maxTextures, pixelLine } = settings;
 
         fragmentSrc = fragmentSrc.replace(/%PRECISION%/gi, precision)
-            .replace(/%PIXEL_LINE%/gi, pixelLineFunc[pixelLine])
+            .replace(/%PIXEL_LINE%/gi, pixelLineFunc)
             .replace(/%PIXEL_COVERAGE%/gi, pixelCoverage)
             .replace(/%MAX_TEXTURES%/gi, `${maxTextures}`)
             .replace(/%FOR_LOOP%/gi, this.generateSampleSrc(maxTextures));
