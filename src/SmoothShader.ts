@@ -215,25 +215,32 @@ void main(void){
                 }
             }
         }
-    }
-        else if (type == JOINT_CAP_ROUND) {
-        // from vertNum 4 to 8
-        vec2 d2 = abs(dy) * forward;
+    } else if (type == JOINT_CAP_ROUND) {
+        /**
+         * From vertNum 4 to 8 :
+         *
+         *    4 ________ 7 & 8  
+         *     |        /|   
+         *     |      /  | 
+         *     |    /    |     
+         *     |  /      |   
+         *     |/_______ |  
+         *    5          6
+         */
         if (vertexNum == 4.) {
             dy = -dy;
             pos = dy * norm;
         } else if (vertexNum == 5.) {
             pos = dy * norm;
         } else if (vertexNum == 6.) {
-            pos = dy * norm + d2;
-            vArc.x = abs(dy);
+            pos = dy * norm + dy * forward;
+            vArc.x = dy;
         } else {
             // vertexNum 7 or 8, merged as the same case
+            pos = -dy * norm + dy * forward;
+            vArc.x = dy;
             dy = -dy;
-            pos = dy * norm + d2;
-            vArc.x = abs(dy);
         }
-        vLine2 = vec4(0.0, halfLineWidth * 2.0 + 10.0, 1.0  , 0.0); // forget about line2 with type=3
         vArc.y = dy;
         vArc.z = 0.0;
         vArc.w = halfLineWidth;
