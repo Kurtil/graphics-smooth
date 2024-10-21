@@ -163,7 +163,17 @@ void main(void){
      * x and y goes from expand to -segment side length.
      */
     vLine2 = vec2(0.0, halfLineWidth);
+
+    /**
+     * Used to AA the round caps and joint.
+     * @type { vec4(x: float, y: float, z: float, w: float) }
+     * x: segment aligned distance to the line end. 0 for vertex 4-5, halfLineWidth + expand for vertex 6-7-8.
+     * y: normal aligned distance to the segment. halfLineWidth + expand for vertex 4-7-8, -(halfLineWidth + expand) for vertex 5-6.
+     * z: 0 for CAP
+     * w: half line width
+     */
     vArc = vec4(0.0);
+    vArc.w = halfLineWidth;
 
     vec2 pos;
     float dy = halfLineWidth + expand;
@@ -222,7 +232,7 @@ void main(void){
          *    4 ________ 7 & 8  
          *     |        /|   
          *     |      /  | 
-         *     |    /    |     
+         *     x    /    |     x = half circle center. radius = halfLineWidth + expand
          *     |  /      |   
          *     |/_______ |  
          *    5          6
@@ -243,7 +253,6 @@ void main(void){
         }
         vArc.y = dy;
         vArc.z = 0.0;
-        vArc.w = halfLineWidth;
         vType = 3.0;
     } else if (oppositeDirection) {
         // TODO is it reachable?
@@ -300,7 +309,6 @@ void main(void){
             vArc.x = side * dot(pos, norm3);
             vArc.y = pos.x * norm3.y - pos.y * norm3.x;
             vArc.z = dot(norm, norm3) * halfLineWidth;
-            vArc.w = halfLineWidth;
             vType = 3.0;
         } else if (type == JOINT_MITER) {
             vType = 1.0;
@@ -415,12 +423,15 @@ if (vType == 0.) {
     float b1 = pixelLine(- vLine2.y - vLine2.x);
     float b2 = pixelLine(vLine2.y - vLine2.x);
     float alpha_miter = a2 * b2 - a1 * b1;
-    float alpha_plane = clamp(vArc.z - vArc.x + 0.5, 0.0, 1.0);
+
+    float alpha_plane = pixelLine(vArc.z - vArc.x);
     float d = length(vArc.xy);
     float circle_hor = max(min(vArc.w, d + 0.5) - max(-vArc.w, d - 0.5), 0.0);
-    float circle_vert = min(vArc.w * 2.0, 1.0);
+    float circle_vert = min(vArc.w * 2.0, 1.0); // TODO always 1?
     float alpha_circle = circle_hor * circle_vert;
-    alpha = min(alpha_miter, max(alpha_circle, alpha_plane));
+    float alpha_round = max(alpha_circle, alpha_plane);
+
+    alpha = min(alpha_miter, alpha_round);
 } else if (vType == 4.) {
     // BEVEL
     float a1 = pixelLine(- halfWidth - signedDistance);
@@ -428,7 +439,7 @@ if (vType == 0.) {
     float b1 = pixelLine(- vLine2.y - vLine2.x);
     float b2 = pixelLine(vLine2.y - vLine2.x);
     alpha = a2 * b2 - a1 * b1;
-    alpha *= clamp(vArc.z + 0.5, 0.0, 1.0);
+    alpha *= pixelLine(vArc.z);
 }
 `;
 
