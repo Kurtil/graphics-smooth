@@ -327,7 +327,13 @@ void main(void){
     vArc = vArc * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
-    gl_Position = vec4((projectionMatrix * vec3(pos, 1.0)).xy, 0.0, 1.0);
+    mat3 reverseY = mat3(
+        1, 0, 0,
+        0, -1, 0,
+        0, 0, 1
+    ); // TODO dev code to see with y bottom to top
+
+    gl_Position = vec4((reverseY * projectionMatrix * vec3(pos, 1.0)).xy, 0.0, 1.0);
 
     vColor = aColor * tint;
 }`;
@@ -399,8 +405,8 @@ float halfWidth = vLine1.y;
 
 if (vType == 0.) {
     // SEGMENT
-        float left = pixelLine(signedDistance - halfWidth); // only close to 1 at the right of the line, else 0
-        float right = pixelLine(signedDistance + halfWidth);  // only close to 0 at the left of the line, else 1        
+    float left = pixelLine(signedDistance - halfWidth); // only close to 1 at the right of the line, else 0
+    float right = pixelLine(signedDistance + halfWidth);  // only close to 0 at the left of the line, else 1
     
     float top = vLine2.y - 0.5;
     float bottom = min(vLine2.y + 0.5, 0.0);
