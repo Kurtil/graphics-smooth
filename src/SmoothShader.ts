@@ -209,7 +209,7 @@ void main(void){
                 pos += back * (extra + expand);
                 dy2 = expand;
             } else {
-                dy2 = dot(segment + pos, back);
+                dy2 = dot(segment + pos, back) - extra;
             }
         }
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
