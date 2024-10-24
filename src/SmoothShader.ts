@@ -432,13 +432,9 @@ if (vType == 0.) {
     float right = pixelLine(signedDistance + halfLineWidth);
     float segmentSideAlpha = right - left;
     
-    float top = vSegmentCoreAA.w - 0.5;
-    float bottom = min(vSegmentCoreAA.w + 0.5, 0.0);
-    float segmentEndAlpha = max(bottom - top, 0.0);
+    float segmentEndAlpha = pixelLine(-vSegmentCoreAA.w);
 
-    float near = vSegmentCoreAA.z - 0.5;
-    float far = min(vSegmentCoreAA.z + 0.5, 0.0);
-    float segmentStartAlpha = max(far - near, 0.0);
+    float segmentStartAlpha = pixelLine(-vSegmentCoreAA.z);
 
     alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
 } else {
