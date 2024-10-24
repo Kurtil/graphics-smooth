@@ -399,12 +399,13 @@ const pixelLineFunc = `
 
 
 /**
- * Returns the pixel coverage from a half-plane.
- * x is the right edge of the half-plane.
+ * Returns the pixel coverage from a distance.
+ * The distance is geometricly representing a half-plane.
+ * d is the right edge of the half-plane.
  * ex:
- * - if x = 0, the half plane covers the left half of the pixel.
- * - if x = .5, the half plane covers the full pixel.
- * - if x = -.5, the half plane covers nothing.
+ * - if d = 0, the half plane covers the left half of the pixel.
+ * - if d = .5, the half plane covers the full pixel.
+ * - if d = -.5, the half plane covers nothing.
  *
  *       |-----------|
  *       |           |
@@ -414,11 +415,11 @@ const pixelLineFunc = `
  * 
  *  ---(-.5)---0---(+.5)--> x       
  * 
- * @param {float} x - right edge of the half-plane
+ * @param {float} d - distance.
  * @return {float} pixel coverage [0, 1]
  */
-float pixelLine(float x) {
-    return clamp(x + .5, 0.0, 1.);
+float getPixelCoverage(float d) {
+    return clamp(d + .5, 0.0, 1.);
 }
 `;
 
@@ -428,32 +429,32 @@ float halfLineWidth = vSegmentCoreAA.y;
 
 if (vType == 0.) {
     // SEGMENT
-    float left = pixelLine(signedDistance - halfLineWidth);
-    float right = pixelLine(signedDistance + halfLineWidth);
+    float left = getPixelCoverage(signedDistance - halfLineWidth);
+    float right = getPixelCoverage(signedDistance + halfLineWidth);
     float segmentSideAlpha = right - left;
     
-    float segmentEndAlpha = pixelLine(-vSegmentCoreAA.w);
+    float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.w);
 
-    float segmentStartAlpha = pixelLine(-vSegmentCoreAA.z);
+    float segmentStartAlpha = getPixelCoverage(-vSegmentCoreAA.z);
 
     alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
 } else {
-    float a1 = pixelLine(- halfLineWidth - signedDistance);
-    float a2 = pixelLine(halfLineWidth - signedDistance);
-    float b1 = pixelLine(- vSegmentCoreAA.w - vSegmentCoreAA.z);
-    float b2 = pixelLine(vSegmentCoreAA.w - vSegmentCoreAA.z);
+    float a1 = getPixelCoverage(- halfLineWidth - signedDistance);
+    float a2 = getPixelCoverage(halfLineWidth - signedDistance);
+    float b1 = getPixelCoverage(- vSegmentCoreAA.w - vSegmentCoreAA.z);
+    float b2 = getPixelCoverage(vSegmentCoreAA.w - vSegmentCoreAA.z);
 
     alpha = a2 * b2 - a1 * b1;
 
     if (vType == 2.) {
         // BEVEL
-        alpha *= pixelLine(vSegmentEndsAA.z);
+        alpha *= getPixelCoverage(vSegmentEndsAA.z);
     } else if (vType == 3.) {
         // ROUND
-        float alpha_plane = pixelLine(vSegmentEndsAA.z - vSegmentEndsAA.x);
+        float alpha_plane = getPixelCoverage(vSegmentEndsAA.z - vSegmentEndsAA.x);
     
         float d = length(vSegmentEndsAA.xy);
-        float alpha_circle = pixelLine(halfLineWidth - d);
+        float alpha_circle = getPixelCoverage(halfLineWidth - d);
 
         float alpha_round = max(alpha_circle, alpha_plane);
     
