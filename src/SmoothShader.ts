@@ -29,7 +29,7 @@ uniform mat3 translationMatrix;
 uniform vec4 tint;
 
 out vec4 vSegmentCoreAA;
-out vec3 vArc;
+out vec3 vSegmentEndsAA;
 out float vType;
 
 uniform float resolution;
@@ -177,7 +177,7 @@ void main(void){
      * SPECIAL CASE FOR BEVEL
      * z: halfLineWidth * dot(norm, norm3) - side * dot(pos, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments.
      */
-    vArc = vec3(0.0);
+    vSegmentEndsAA = vec3(0.0);
 
     vec2 pos;
     float dy = halfLineWidth + expand;
@@ -261,15 +261,15 @@ void main(void){
             pos = dy * norm;
         } else if (vertexNum == 6.) {
             pos = dy * norm + dy * forward;
-            vArc.x = dy;
+            vSegmentEndsAA.x = dy;
         } else {
             // vertexNum 7 or 8, merged as the same case
             pos = -dy * norm + dy * forward;
-            vArc.x = dy;
+            vSegmentEndsAA.x = dy;
             dy = -dy;
         }
-        vArc.y = dy;
-        vArc.z = 0.0;
+        vSegmentEndsAA.y = dy;
+        vSegmentEndsAA.z = 0.0;
         vType = 3.0;
     } else {
         /**
@@ -330,15 +330,15 @@ void main(void){
         }
 
         if (type == JOINT_ROUND) {
-            vArc.x = side * dot(pos, norm3);
-            vArc.y = pos.x * norm3.y - pos.y * norm3.x; // 2D cross product
-            vArc.z = dot(norm, norm3) * halfLineWidth;
+            vSegmentEndsAA.x = side * dot(pos, norm3);
+            vSegmentEndsAA.y = pos.x * norm3.y - pos.y * norm3.x; // 2D cross product
+            vSegmentEndsAA.z = dot(norm, norm3) * halfLineWidth;
             vType = 3.0;
         } else if (type == JOINT_MITER) {
             vType = 1.0;
         } else if (type == JOINT_BEVEL) {
             vType = 2.0;
-            vArc.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
+            vSegmentEndsAA.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
         }
 
         dy = side * dot(pos, norm);
@@ -348,7 +348,7 @@ void main(void){
     pos += isSegmentHead ? pointA : pointB;
 
     vSegmentCoreAA = vec4(dy, vSegmentCoreAA.y, dy2, vSegmentCoreAA.w) * resolution;
-    vArc = vArc * resolution;
+    vSegmentEndsAA = vSegmentEndsAA * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
     mat3 reverseY = mat3(
@@ -373,7 +373,7 @@ const precision = `#version 300 es
 const smoothFrag = `%PRECISION%
 in vec4 vColor;
 in vec4 vSegmentCoreAA;
-in vec3 vArc;
+in vec3 vSegmentEndsAA;
 in float vType;
 in float vTextureId;
 in vec2 vTextureCoord;
@@ -447,12 +447,12 @@ if (vType == 0.) {
 
     if (vType == 2.) {
         // BEVEL
-        alpha *= pixelLine(vArc.z);
+        alpha *= pixelLine(vSegmentEndsAA.z);
     } else if (vType == 3.) {
         // ROUND
-        float alpha_plane = pixelLine(vArc.z - vArc.x);
+        float alpha_plane = pixelLine(vSegmentEndsAA.z - vSegmentEndsAA.x);
     
-        float d = length(vArc.xy);
+        float d = length(vSegmentEndsAA.xy);
         float alpha_circle = pixelLine(halfLineWidth - d);
 
         float alpha_round = max(alpha_circle, alpha_plane);
