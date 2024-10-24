@@ -167,10 +167,18 @@ void main(void){
     /**
      * Used to AA the round caps and joint.
      * @type { vec4(x: float, y: float, z: float, w: float) }
+     * CAP
      * x: segment aligned distance to the line end. 0 for vertex 4-5, halfLineWidth + expand for vertex 6-7-8.
      * y: normal aligned distance to the segment. halfLineWidth + expand for vertex 4-7-8, -(halfLineWidth + expand) for vertex 5-6.
-     * z: 0 for CAP
+     * z: 0
+     * JOINT
+     * x: bisector aligned distance to segment joint. 0 at joint, +halfLineWidth for outer vertex, - segment length for inner vertex.
+     * y: bisector aligned distance to edges. 0 at joint, +halfLineWidth for vertex 5, -halfLineWidth for vertex 8.
+     * z: halfLineWidth * dot(norm, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments. Equal across all vertices.
+     * BOTH
      * w: half line width
+     * SPECIAL CASE FOR BEVEL
+     * z: halfLineWidth * dot(norm, norm3) - side * dot(pos, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments.
      */
     vArc = vec4(0.0);
     vArc.w = halfLineWidth;
@@ -327,7 +335,7 @@ void main(void){
 
         if (type == JOINT_ROUND) {
             vArc.x = side * dot(pos, norm3);
-            vArc.y = pos.x * norm3.y - pos.y * norm3.x;
+            vArc.y = pos.x * norm3.y - pos.y * norm3.x; // 2D cross product
             vArc.z = dot(norm, norm3) * halfLineWidth;
             vType = 3.0;
         } else if (type == JOINT_MITER) {
@@ -425,16 +433,19 @@ float halfWidth = vLine1.y;
 
 if (vType == 0.) {
     // SEGMENT
-    float left = pixelLine(signedDistance - halfWidth); // only close to 1 at the right of the line, else 0
-    float right = pixelLine(signedDistance + halfWidth);  // only close to 0 at the left of the line, else 1
+    float left = pixelLine(signedDistance - halfWidth);
+    float right = pixelLine(signedDistance + halfWidth);
+    float segmentSideAlpha = right - left;
     
     float top = vLine2.y - 0.5;
     float bottom = min(vLine2.y + 0.5, 0.0);
+    float segmentEndAlpha = max(bottom - top, 0.0);
 
     float near = vLine2.x - 0.5;
     float far = min(vLine2.x + 0.5, 0.0);
+    float segmentStartAlpha = max(far - near, 0.0);
 
-    alpha = (right - left) * max(bottom - top, 0.0) * max(far - near, 0.0);
+    alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
 } else if (vType == 1.) {
     // MITER
     float a1 = pixelLine(- halfWidth - signedDistance);
@@ -451,6 +462,7 @@ if (vType == 0.) {
     float alpha_miter = a2 * b2 - a1 * b1;
 
     float alpha_plane = pixelLine(vArc.z - vArc.x);
+
     float d = length(vArc.xy);
     float circle_hor = max(min(vArc.w, d + 0.5) - max(-vArc.w, d - 0.5), 0.0);
     float circle_vert = min(vArc.w * 2.0, 1.0); // TODO always 1?
