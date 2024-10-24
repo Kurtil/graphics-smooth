@@ -254,9 +254,6 @@ void main(void){
         vArc.y = dy;
         vArc.z = 0.0;
         vType = 3.0;
-    } else if (oppositeDirection) {
-        // TODO is it reachable?
-        pos = dy * norm;
     } else {
         // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
         bool isInnerVertex = crossProduct < 0.0;
