@@ -179,7 +179,20 @@ void main(void){
     float dy = halfLineWidth + expand;
 
     if (vertexNum <= 3.) { 
-        // SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE (the last two have only 4 vertices for a JOINT_CAP_*, JOINT_CAP_ROUND has 8). Also handle the segment head CAP_BUTT and CAP_SQUARE.
+        /**
+         * SEGMENT part of JOINT_(MITER/BEVEL/ROUND) OR JOINT_CAP_BUTT OR JOINT_CAP_SQUARE
+         * The last two have only 4 vertices for a JOINT_CAP_*, JOINT_CAP_ROUND has 8.
+         * Also handle the segment head CAP_BUTT and CAP_SQUARE.
+         *
+         *       SEGMENT   
+         *    0 _________ 1
+         *     |        /| 
+         *     |      /  | 
+         *     A    /    B 
+         *     |  /      | 
+         *     |/________| 
+         *    3           2
+         */
         bool isVertexSegmentLeftSide = vertexNum < 2.;
         if (isVertexSegmentLeftSide) {
             dy = -dy;
@@ -255,7 +268,17 @@ void main(void){
         vArc.z = 0.0;
         vType = 3.0;
     } else {
-        // JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
+        /**
+         * JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
+         * 
+         *    5 _____6     
+         *     |    /  \     
+         *     |   /    / 7   
+         *     |  /   /  |    
+         *     | / /     |   
+         *     |/_______ |  
+         *    4           8
+         */
         bool isInnerVertex = crossProduct < 0.0;
         if (isInnerVertex) {
             dy = -dy;
@@ -271,7 +294,7 @@ void main(void){
         }
 
         if (vertexNum == 4.) {
-            pos = doBisect(norm, len, norm2, len2, - dy, true);
+            pos = doBisect(norm, len, norm2, len2, -dy, true);
         } else if (vertexNum == 5.) {
             pos = dy * norm;
         } else if (vertexNum == 8.) {
@@ -291,7 +314,7 @@ void main(void){
                     }
                 }
             } else if (type == JOINT_MITER) {
-                pos = doBisect(norm, len, norm2, len2, dy, false); //farVertex
+                pos = doBisect(norm, len, norm2, len2, dy, false); // not a far vertex because it was handled previously
             } else if (type == JOINT_BEVEL) {
                 float d2 = side / resolution;
                 if (vertexNum == 6.) {
