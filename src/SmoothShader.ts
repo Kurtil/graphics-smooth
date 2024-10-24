@@ -450,8 +450,8 @@ if (vType == 0.) {
     float a2 = pixelLine(halfLineWidth - signedDistance);
     float b1 = pixelLine(- vLine2.y - vLine2.x);
     float b2 = pixelLine(vLine2.y - vLine2.x);
-    float alpha_miter = a2 * b2 - a1 * b1;
-    alpha = alpha_miter;
+
+    alpha = a2 * b2 - a1 * b1;
 
     if (vType == 2.) {
         // BEVEL
@@ -461,9 +461,8 @@ if (vType == 0.) {
         float alpha_plane = pixelLine(vArc.z - vArc.x);
     
         float d = length(vArc.xy);
-        float circle_hor = max(min(halfLineWidth, d + 0.5) - max(-halfLineWidth, d - 0.5), 0.0);
-        float circle_vert = min(halfLineWidth * 2.0, 1.0); // TODO always 1?
-        float alpha_circle = circle_hor * circle_vert;
+        float alpha_circle = pixelLine(halfLineWidth - d);
+
         float alpha_round = max(alpha_circle, alpha_plane);
     
         alpha = min(alpha, alpha_round);
