@@ -30,7 +30,7 @@ uniform vec4 tint;
 
 out vec2 vLine1;
 out vec2 vLine2;
-out vec4 vArc;
+out vec3 vArc;
 out float vType;
 
 uniform float resolution;
@@ -180,8 +180,7 @@ void main(void){
      * SPECIAL CASE FOR BEVEL
      * z: halfLineWidth * dot(norm, norm3) - side * dot(pos, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments.
      */
-    vArc = vec4(0.0);
-    vArc.w = halfLineWidth;
+    vArc = vec3(0.0);
 
     vec2 pos;
     float dy = halfLineWidth + expand;
@@ -341,7 +340,7 @@ void main(void){
         } else if (type == JOINT_MITER) {
             vType = 1.0;
         } else if (type == JOINT_BEVEL) {
-            vType = 4.0;
+            vType = 2.0;
             vArc.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
         }
 
@@ -378,7 +377,7 @@ const smoothFrag = `%PRECISION%
 in vec4 vColor;
 in vec2 vLine1;
 in vec2 vLine2;
-in vec4 vArc;
+in vec3 vArc;
 in float vType;
 in float vTextureId;
 in vec2 vTextureCoord;
@@ -429,12 +428,12 @@ float pixelLine(float x) {
 
 const pixelCoverage = `float alpha = 1.0;
 float signedDistance = vLine1.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
-float halfWidth = vLine1.y; 
+float halfLineWidth = vLine1.y; 
 
 if (vType == 0.) {
     // SEGMENT
-    float left = pixelLine(signedDistance - halfWidth);
-    float right = pixelLine(signedDistance + halfWidth);
+    float left = pixelLine(signedDistance - halfLineWidth);
+    float right = pixelLine(signedDistance + halfLineWidth);
     float segmentSideAlpha = right - left;
     
     float top = vLine2.y - 0.5;
@@ -446,38 +445,29 @@ if (vType == 0.) {
     float segmentStartAlpha = max(far - near, 0.0);
 
     alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
-} else if (vType == 1.) {
-    // MITER
-    float a1 = pixelLine(- halfWidth - signedDistance);
-    float a2 = pixelLine(halfWidth - signedDistance);
-    float b1 = pixelLine(- vLine2.y - vLine2.x);
-    float b2 = pixelLine(vLine2.y - vLine2.x);
-    alpha = a2 * b2 - a1 * b1;
-} else if (vType == 3.) {
-    // ROUND
-    float a1 = pixelLine(- halfWidth - signedDistance);
-    float a2 = pixelLine(halfWidth - signedDistance);
+} else {
+    float a1 = pixelLine(- halfLineWidth - signedDistance);
+    float a2 = pixelLine(halfLineWidth - signedDistance);
     float b1 = pixelLine(- vLine2.y - vLine2.x);
     float b2 = pixelLine(vLine2.y - vLine2.x);
     float alpha_miter = a2 * b2 - a1 * b1;
+    alpha = alpha_miter;
 
-    float alpha_plane = pixelLine(vArc.z - vArc.x);
-
-    float d = length(vArc.xy);
-    float circle_hor = max(min(vArc.w, d + 0.5) - max(-vArc.w, d - 0.5), 0.0);
-    float circle_vert = min(vArc.w * 2.0, 1.0); // TODO always 1?
-    float alpha_circle = circle_hor * circle_vert;
-    float alpha_round = max(alpha_circle, alpha_plane);
-
-    alpha = min(alpha_miter, alpha_round);
-} else if (vType == 4.) {
-    // BEVEL
-    float a1 = pixelLine(- halfWidth - signedDistance);
-    float a2 = pixelLine(halfWidth - signedDistance);
-    float b1 = pixelLine(- vLine2.y - vLine2.x);
-    float b2 = pixelLine(vLine2.y - vLine2.x);
-    alpha = a2 * b2 - a1 * b1;
-    alpha *= pixelLine(vArc.z);
+    if (vType == 2.) {
+        // BEVEL
+        alpha *= pixelLine(vArc.z);
+    } else if (vType == 3.) {
+        // ROUND
+        float alpha_plane = pixelLine(vArc.z - vArc.x);
+    
+        float d = length(vArc.xy);
+        float circle_hor = max(min(halfLineWidth, d + 0.5) - max(-halfLineWidth, d - 0.5), 0.0);
+        float circle_vert = min(halfLineWidth * 2.0, 1.0); // TODO always 1?
+        float alpha_circle = circle_hor * circle_vert;
+        float alpha_round = max(alpha_circle, alpha_plane);
+    
+        alpha = min(alpha, alpha_round);
+    }
 }
 `;
 
