@@ -28,8 +28,7 @@ uniform mat3 projectionMatrix;
 uniform mat3 translationMatrix;
 uniform vec4 tint;
 
-out vec2 vLine1;
-out vec2 vLine2;
+out vec4 vSegmentCoreAA;
 out vec3 vArc;
 out float vType;
 
@@ -153,16 +152,14 @@ void main(void){
 
     /**
      * Used to AA the segment sides.
-     * @type { vec2(d: float, w: float) } d: signed distance to the center line, w: half line width
-     */
-    vLine1 = vec2(0.0, halfLineWidth);
-
-    /**
-     * Used to AA the segment caps (head and tail).
-     * @type { vec2(x: float, y: float) } x: aa value for the segment head, y: aa value for the segment tail
+     * @type { vec4(d: float, w: float, x: float, y: float) }
+     * d: signed distance to the center line
+     * w: half line width
+     * x: aa value for the segment head
+     * y: aa value for the segment tail
      * x and y goes from expand to -segment side length.
      */
-    vLine2 = vec2(0.0, halfLineWidth);
+    vSegmentCoreAA = vec4(0.0, halfLineWidth, 0.0, halfLineWidth);
 
     /**
      * Used to AA the round caps and joint.
@@ -219,7 +216,7 @@ void main(void){
                 pos = dy * norm;
             }
         }
-        vLine2.y = -1000.0;
+        vSegmentCoreAA.w = -1000.0;
         // CAP_BUTT and CAP_SQUARE
         if (capType == CAP_BUTT || capType == CAP_SQUARE) {
             float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
@@ -235,10 +232,10 @@ void main(void){
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
             float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
             if (isSegmentHead) {
-                vLine2.y = dot(-segment + pos, forward) - extra;
+                vSegmentCoreAA.w = dot(-segment + pos, forward) - extra; 
             } else {
                 pos += forward * (extra + expand);
-                vLine2.y = expand;
+                vSegmentCoreAA.w = expand; 
                 if (capType != 0.) {
                     // CAP_SQUARE or CAP_BUTT are possible here when the line is one segment long with caps on both sides. dy2 must take into account the cap on segment tail.
                     dy2 -= extra + expand;
@@ -349,8 +346,8 @@ void main(void){
     }
 
     pos += isSegmentHead ? pointA : pointB;
-    vLine1 = vec2(dy, vLine1.y) * resolution;
-    vLine2 = vec2(dy2, vLine2.y) * resolution;
+
+    vSegmentCoreAA = vec4(dy, vSegmentCoreAA.y, dy2, vSegmentCoreAA.w) * resolution;
     vArc = vArc * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
@@ -375,8 +372,7 @@ const precision = `#version 300 es
 
 const smoothFrag = `%PRECISION%
 in vec4 vColor;
-in vec2 vLine1;
-in vec2 vLine2;
+in vec4 vSegmentCoreAA;
 in vec3 vArc;
 in float vType;
 in float vTextureId;
@@ -427,8 +423,8 @@ float pixelLine(float x) {
 `;
 
 const pixelCoverage = `float alpha = 1.0;
-float signedDistance = vLine1.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
-float halfLineWidth = vLine1.y; 
+float signedDistance = vSegmentCoreAA.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
+float halfLineWidth = vSegmentCoreAA.y;
 
 if (vType == 0.) {
     // SEGMENT
@@ -436,20 +432,20 @@ if (vType == 0.) {
     float right = pixelLine(signedDistance + halfLineWidth);
     float segmentSideAlpha = right - left;
     
-    float top = vLine2.y - 0.5;
-    float bottom = min(vLine2.y + 0.5, 0.0);
+    float top = vSegmentCoreAA.w - 0.5;
+    float bottom = min(vSegmentCoreAA.w + 0.5, 0.0);
     float segmentEndAlpha = max(bottom - top, 0.0);
 
-    float near = vLine2.x - 0.5;
-    float far = min(vLine2.x + 0.5, 0.0);
+    float near = vSegmentCoreAA.z - 0.5;
+    float far = min(vSegmentCoreAA.z + 0.5, 0.0);
     float segmentStartAlpha = max(far - near, 0.0);
 
     alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
 } else {
     float a1 = pixelLine(- halfLineWidth - signedDistance);
     float a2 = pixelLine(halfLineWidth - signedDistance);
-    float b1 = pixelLine(- vLine2.y - vLine2.x);
-    float b2 = pixelLine(vLine2.y - vLine2.x);
+    float b1 = pixelLine(- vSegmentCoreAA.w - vSegmentCoreAA.z);
+    float b2 = pixelLine(vSegmentCoreAA.w - vSegmentCoreAA.z);
 
     alpha = a2 * b2 - a1 * b1;
 
