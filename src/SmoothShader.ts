@@ -28,9 +28,10 @@ uniform mat3 projectionMatrix;
 uniform mat3 translationMatrix;
 uniform vec4 tint;
 
-out vec4 vSegmentCoreAA;
+out vec3 vSegmentCoreAA;
 out vec3 vSegmentEndsAA;
 out float vType;
+flat out float vHalfLineWidth;
 
 uniform float resolution;
 uniform float expand;
@@ -120,6 +121,7 @@ void main(void){
 
     int styleId = int(aStyleId + 0.5);
     float halfLineWidth = styleLine[styleId].x / 2.;
+    vHalfLineWidth = halfLineWidth;
     vTextureId = floor(styleTextureId[styleId] / 4.0);
 
     vec2 base, next;
@@ -152,14 +154,14 @@ void main(void){
 
     /**
      * Used to AA the segment sides.
-     * @type { vec4(d: float, w: float, x: float, y: float) }
-     * d: signed distance to the center line
-     * w: half line width
-     * x: aa value for the segment head
-     * y: aa value for the segment tail
-     * x and y goes from expand to -segment side length.
+     * @type { vec4(x: float, y: float, z: float, w: float) }
+     * x: signed distance to the center line
+     * y: half line width
+     * z: aa value for the segment head
+     * w: aa value for the segment tail
+     * z and w goes from expand to -segment side length.
      */
-    vSegmentCoreAA = vec4(0.0, halfLineWidth, 0.0, halfLineWidth);
+    vSegmentCoreAA = vec3(0.0, 0.0, halfLineWidth);
 
     /**
      * Used to AA the round caps and joint.
@@ -172,8 +174,6 @@ void main(void){
      * x: bisector aligned distance to segment joint. 0 at joint, +halfLineWidth for outer vertex, - segment length for inner vertex.
      * y: bisector aligned distance to edges. 0 at joint, +halfLineWidth for vertex 5, -halfLineWidth for vertex 8.
      * z: halfLineWidth * dot(norm, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments. Equal across all vertices.
-     * BOTH
-     * w: half line width
      * SPECIAL CASE FOR BEVEL
      * z: halfLineWidth * dot(norm, norm3) - side * dot(pos, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments.
      */
@@ -216,7 +216,7 @@ void main(void){
                 pos = dy * norm;
             }
         }
-        vSegmentCoreAA.w = -1000.0;
+        vSegmentCoreAA.z = -1000.0;
         // CAP_BUTT and CAP_SQUARE
         if (capType == CAP_BUTT || capType == CAP_SQUARE) {
             float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
@@ -232,10 +232,10 @@ void main(void){
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
             float extra = type == JOINT_CAP_SQUARE ? halfLineWidth : 0.;
             if (isSegmentHead) {
-                vSegmentCoreAA.w = dot(-segment + pos, forward) - extra; 
+                vSegmentCoreAA.z = dot(-segment + pos, forward) - extra; 
             } else {
                 pos += forward * (extra + expand);
-                vSegmentCoreAA.w = expand; 
+                vSegmentCoreAA.z = expand; 
                 if (capType != 0.) {
                     // CAP_SQUARE or CAP_BUTT are possible here when the line is one segment long with caps on both sides. dy2 must take into account the cap on segment tail.
                     dy2 -= extra + expand;
@@ -347,7 +347,7 @@ void main(void){
 
     pos += isSegmentHead ? pointA : pointB;
 
-    vSegmentCoreAA = vec4(dy, vSegmentCoreAA.y, dy2, vSegmentCoreAA.w) * resolution;
+    vSegmentCoreAA = vec3(dy, dy2, vSegmentCoreAA.z) * resolution;
     vSegmentEndsAA = vSegmentEndsAA * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
@@ -372,8 +372,9 @@ const precision = `#version 300 es
 
 const smoothFrag = `%PRECISION%
 in vec4 vColor;
-in vec4 vSegmentCoreAA;
+in vec3 vSegmentCoreAA;
 in vec3 vSegmentEndsAA;
+flat in float vHalfLineWidth;
 in float vType;
 in float vTextureId;
 in vec2 vTextureCoord;
@@ -425,24 +426,23 @@ float getPixelCoverage(float d) {
 
 const pixelCoverage = `float alpha = 1.0;
 float signedDistance = vSegmentCoreAA.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
-float halfLineWidth = vSegmentCoreAA.y;
 
 if (vType == 0.) {
     // SEGMENT
-    float left = getPixelCoverage(signedDistance - halfLineWidth);
-    float right = getPixelCoverage(signedDistance + halfLineWidth);
+    float left = getPixelCoverage(signedDistance - vHalfLineWidth);
+    float right = getPixelCoverage(signedDistance + vHalfLineWidth);
     float segmentSideAlpha = right - left;
     
-    float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.w);
+    float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.z);
 
-    float segmentStartAlpha = getPixelCoverage(-vSegmentCoreAA.z);
+    float segmentStartAlpha = getPixelCoverage(-vSegmentCoreAA.y);
 
     alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
 } else {
-    float a1 = getPixelCoverage(- halfLineWidth - signedDistance);
-    float a2 = getPixelCoverage(halfLineWidth - signedDistance);
-    float b1 = getPixelCoverage(- vSegmentCoreAA.w - vSegmentCoreAA.z);
-    float b2 = getPixelCoverage(vSegmentCoreAA.w - vSegmentCoreAA.z);
+    float a1 = getPixelCoverage(- vHalfLineWidth - signedDistance);
+    float a2 = getPixelCoverage(vHalfLineWidth - signedDistance);
+    float b1 = getPixelCoverage(- vSegmentCoreAA.z - vSegmentCoreAA.y);
+    float b2 = getPixelCoverage(vSegmentCoreAA.z - vSegmentCoreAA.y);
 
     alpha = a2 * b2 - a1 * b1;
 
@@ -454,7 +454,7 @@ if (vType == 0.) {
         float alpha_plane = getPixelCoverage(vSegmentEndsAA.z - vSegmentEndsAA.x);
     
         float d = length(vSegmentEndsAA.xy);
-        float alpha_circle = getPixelCoverage(halfLineWidth - d);
+        float alpha_circle = getPixelCoverage(vHalfLineWidth - d);
 
         float alpha_round = max(alpha_circle, alpha_plane);
     
