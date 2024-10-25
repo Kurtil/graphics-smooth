@@ -167,9 +167,9 @@ void main(void){
      * JOINT
      * x: bisector aligned distance to segment joint. 0 at joint, +halfLineWidth for outer vertex, - segment length for inner vertex.
      * y: bisector aligned distance to edges. 0 at joint, +halfLineWidth for vertex 5, -halfLineWidth for vertex 8.
-     * z: halfLineWidth * dot(norm, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments. Equal across all vertices.
+     * z: from halfLineWidth for aligned segments to 0 for opposite segments.
      * SPECIAL CASE FOR BEVEL
-     * z: halfLineWidth * dot(norm, norm3) - side * dot(pos, norm3) => from halfLineWidth for aligned segments to 0 for opposite segments.
+     * z: from halfLineWidth for aligned segments to 0 for opposite segments.
      */
     vSegmentEndsAA = vec3(0.0);
 
@@ -265,7 +265,6 @@ void main(void){
             dy = -dy;
         }
         vSegmentEndsAA.y = dy;
-        vSegmentEndsAA.z = 0.0;
         vType = 3.0;
     } else {
         /**
@@ -281,10 +280,10 @@ void main(void){
          */
         bool isInnerVertex = crossProduct < 0.0;
         if (isInnerVertex) {
-            dy = -dy;
+            dy = -dy; // -(halfLineWidth + expand)
         }
         float side = sign(dy);
-        vec2 norm3 = normalize(norm + norm2);
+        vec2 bisector = normalize(norm + norm2) * side;
 
         if (type == JOINT_MITER) {
             vec2 farVertex = doBisect(norm, len, norm2, len2, dy, false);
@@ -316,25 +315,24 @@ void main(void){
             } else if (type == JOINT_MITER) {
                 pos = doBisect(norm, len, norm2, len2, dy, false); // not a far vertex because it was handled previously
             } else if (type == JOINT_BEVEL) {
-                float d2 = side;
                 if (vertexNum == 6.) {
-                    pos = dy * norm + d2 * norm3;
+                    pos = dy * norm + bisector;
                 } else {
-                    pos = dy * norm2 + d2 * norm3;
+                    pos = dy * norm2 + bisector;
                 }
             }
         }
 
-        if (type == JOINT_ROUND) {
-            vSegmentEndsAA.x = side * dot(pos, norm3);
-            vSegmentEndsAA.y = pos.x * norm3.y - pos.y * norm3.x; // 2D cross product
-            vSegmentEndsAA.z = dot(norm, norm3) * halfLineWidth;
-            vType = 3.0;
-        } else if (type == JOINT_MITER) {
+        if (type == JOINT_MITER) {
             vType = 1.0;
         } else if (type == JOINT_BEVEL) {
-            vSegmentEndsAA.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
+            vSegmentEndsAA.z = dot(norm, bisector) * side * halfLineWidth - dot(pos, bisector);
             vType = 2.0;
+        } else if (type == JOINT_ROUND) {
+            vSegmentEndsAA.x = dot(pos, bisector);
+            vSegmentEndsAA.y = pos.x * bisector.y - pos.y * bisector.x; // 2D cross product
+            vSegmentEndsAA.z = dot(norm, bisector) * halfLineWidth * side;
+            vType = 3.0;
         }
 
         dy = side * dot(pos, norm);
@@ -343,8 +341,9 @@ void main(void){
 
     pos += isSegmentHead ? pointA : pointB;
 
-    vSegmentCoreAA = vec3(dy, dx, vSegmentCoreAA.z);
-    vSegmentEndsAA = vSegmentEndsAA;
+    vSegmentCoreAA.x = dy;
+    vSegmentCoreAA.y = dx;
+
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
     mat3 reverseY = mat3(
