@@ -421,24 +421,33 @@ float getPixelCoverage(float d) {
 `;
 
 const pixelCoverage = `float alpha = 1.0;
-float signedDistance = vSegmentCoreAA.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
+float dy = vSegmentCoreAA.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
+float dx = vSegmentCoreAA.y;
 
 if (vType == 0.) {
     // SEGMENT
-    float left = getPixelCoverage(vHalfLineWidth - signedDistance);
-    float right = getPixelCoverage(vHalfLineWidth + signedDistance);
+    float left = getPixelCoverage(vHalfLineWidth - dy);
+    float right = getPixelCoverage(vHalfLineWidth + dy);
     float segmentSideAlpha = right * left;
     
-    float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.z);
-    float segmentStartAlpha = getPixelCoverage(-vSegmentCoreAA.y);
+    float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.z); // TODO useless if instanced geometry with segment + joint/cap
+    float segmentStartAlpha = getPixelCoverage(-dx);
     float segmentEndsAlpha = segmentEndAlpha * segmentStartAlpha;
 
     alpha = segmentSideAlpha * segmentEndsAlpha;
+
+    // TODO could be done this way... with -vSegmentCoreAA.z = halfLineWidth
+    // float a1 = getPixelCoverage(- vHalfLineWidth - dy);
+    // float a2 = getPixelCoverage(vHalfLineWidth - dy);
+    // float b1 = getPixelCoverage(-vSegmentCoreAA.z - dx);
+    // float b2 = getPixelCoverage(vSegmentCoreAA.z - dx);
+
+    // alpha = a2 * b2 - a1 * b1;
 } else {
-    float a1 = getPixelCoverage(- vHalfLineWidth - signedDistance);
-    float a2 = getPixelCoverage(vHalfLineWidth - signedDistance);
-    float b1 = getPixelCoverage(- vSegmentCoreAA.z - vSegmentCoreAA.y);
-    float b2 = getPixelCoverage(vSegmentCoreAA.z - vSegmentCoreAA.y);
+    float a1 = getPixelCoverage(- vHalfLineWidth - dy);
+    float a2 = getPixelCoverage(vHalfLineWidth - dy);
+    float b1 = getPixelCoverage(- vHalfLineWidth - dx);
+    float b2 = getPixelCoverage(vHalfLineWidth - dx);
 
     alpha = a2 * b2 - a1 * b1;
 
