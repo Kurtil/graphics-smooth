@@ -429,15 +429,15 @@ float signedDistance = vSegmentCoreAA.x; // signed distance to center line goes 
 
 if (vType == 0.) {
     // SEGMENT
-    float left = getPixelCoverage(signedDistance - vHalfLineWidth);
-    float right = getPixelCoverage(signedDistance + vHalfLineWidth);
-    float segmentSideAlpha = right - left;
+    float left = getPixelCoverage(vHalfLineWidth - signedDistance);
+    float right = getPixelCoverage(vHalfLineWidth + signedDistance);
+    float segmentSideAlpha = right * left;
     
     float segmentEndAlpha = getPixelCoverage(-vSegmentCoreAA.z);
-
     float segmentStartAlpha = getPixelCoverage(-vSegmentCoreAA.y);
+    float segmentEndsAlpha = segmentEndAlpha * segmentStartAlpha;
 
-    alpha = segmentSideAlpha * segmentStartAlpha * segmentEndAlpha;
+    alpha = segmentSideAlpha * segmentEndsAlpha;
 } else {
     float a1 = getPixelCoverage(- vHalfLineWidth - signedDistance);
     float a2 = getPixelCoverage(vHalfLineWidth - signedDistance);
