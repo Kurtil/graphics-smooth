@@ -32,7 +32,7 @@ uniform vec4 tint;
 
 out vec3 vSegmentCoreAA;
 out vec3 vSegmentEndsAA;
-out float vType;
+flat out int vIsSegmentAA;
 flat out float vHalfLineWidth;
 
 // === style ===
@@ -237,7 +237,7 @@ void main(void){
                 }
             }
         }
-        vType = 0.0;
+        vIsSegmentAA = 1;
     } else if (type == JOINT_CAP_ROUND) {
         /**
          * From vertNum 4 to 8 :
@@ -250,6 +250,7 @@ void main(void){
          *     |/_______ |  
          *    5          6
          */
+        vSegmentEndsAA.z = -.5; // value to reset the alpha value to 0 in the fragment shader before the alpha_circle test
         if (vertexNum == 4.) {
             dy = -dy;
             pos = dy * norm;
@@ -265,7 +266,6 @@ void main(void){
             dy = -dy;
         }
         vSegmentEndsAA.y = dy;
-        vType = 3.0;
     } else {
         /**
          * JOINT PART (opposite to segment) of JOINT_(MITER/BEVEL/ROUND) from vertNum 4 to 8
@@ -323,16 +323,17 @@ void main(void){
             }
         }
 
+        vSegmentEndsAA.x = halfLineWidth; // value to pass the alpha_circle max test in the fragment shader
+        vSegmentEndsAA.y = halfLineWidth; // value to pass the alpha_circle max test in the fragment shader
         if (type == JOINT_MITER) {
-            vType = 1.0;
-        } else if (type == JOINT_BEVEL) {
-            vSegmentEndsAA.z = dot(norm, bisector) * side * halfLineWidth - dot(pos, bisector);
-            vType = 2.0;
-        } else if (type == JOINT_ROUND) {
+            vSegmentEndsAA.z = 1.;
+        } else {
+            vSegmentEndsAA.z = side * halfLineWidth * dot(norm, bisector) - dot(pos, bisector);
+
+            if (type == JOINT_ROUND) {
             vSegmentEndsAA.x = dot(pos, bisector);
             vSegmentEndsAA.y = pos.x * bisector.y - pos.y * bisector.x; // 2D cross product
-            vSegmentEndsAA.z = dot(norm, bisector) * halfLineWidth * side;
-            vType = 3.0;
+            }
         }
 
         dy = side * dot(pos, norm);
@@ -370,7 +371,7 @@ in vec4 vColor;
 in vec3 vSegmentCoreAA;
 in vec3 vSegmentEndsAA;
 flat in float vHalfLineWidth;
-in float vType;
+flat in int vIsSegmentAA;
 in float vTextureId;
 in vec2 vTextureCoord;
 in vec2 vTravel;
@@ -423,7 +424,7 @@ const pixelCoverage = `float alpha = 1.0;
 float dy = vSegmentCoreAA.x; // signed distance to center line goes from -(halfLineWidth + 1) to halfLineWidth + 1 (left to right)
 float dx = vSegmentCoreAA.y;
 
-if (vType == 0.) {
+if (vIsSegmentAA == 1) {
     // SEGMENT
     float left = getPixelCoverage(vHalfLineWidth - dy);
     float right = getPixelCoverage(vHalfLineWidth + dy);
@@ -450,20 +451,14 @@ if (vType == 0.) {
 
     alpha = a2 * b2 - a1 * b1;
 
-    if (vType == 2.) {
-        // BEVEL
+    // next lines used by BEVEL and ROUND - specific values need to be set for MITER to bypass them.
         alpha *= getPixelCoverage(vSegmentEndsAA.z);
-    } else if (vType == 3.) {
-        // ROUND
-        float alpha_plane = getPixelCoverage(vSegmentEndsAA.z - vSegmentEndsAA.x);
     
+    // next lines used by ROUND only - specific values need to be set for MITER and BEVEL to bypass them.
         float d = length(vSegmentEndsAA.xy);
         float alpha_circle = getPixelCoverage(vHalfLineWidth - d);
 
-        float alpha_round = max(alpha_circle, alpha_plane);
-    
-        alpha = min(alpha, alpha_round);
-    }
+    alpha = max(alpha, alpha_circle);
 }
 `;
 
