@@ -150,16 +150,15 @@ void main(void){
 
     // AA
     vType = 0.0;
-    float dy2 = -1000.0;
+    float dy2 = -1.0;
 
     /**
      * Used to AA the segment sides.
      * @type { vec4(x: float, y: float, z: float, w: float) }
-     * x: signed distance to the center line
-     * y: half line width
-     * z: aa value for the segment head
-     * w: aa value for the segment tail
-     * z and w goes from expand to -segment side length.
+     * x: signed distance from the segment sides to the center line. Finale value sets with dy.
+     * y: aa value for the segment head. 
+     * z: aa value for the segment tail
+     * y and z goes from expand to -segment side length.
      */
     vSegmentCoreAA = vec3(0.0, 0.0, halfLineWidth);
 
@@ -216,7 +215,7 @@ void main(void){
                 pos = dy * norm;
             }
         }
-        vSegmentCoreAA.z = -1000.0;
+        vSegmentCoreAA.z = -1.;
         // CAP_BUTT and CAP_SQUARE
         if (capType == CAP_BUTT || capType == CAP_SQUARE) {
             float extra = capType == CAP_SQUARE ? halfLineWidth : 0.;
