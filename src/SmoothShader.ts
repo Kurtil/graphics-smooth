@@ -16,6 +16,8 @@ const float CAP_ROUND = 3.0;
 
 const float MITER_LIMIT = 10.0;
 
+const float expand = 1.0;
+
 // === geom ===
 in vec2 aPrev;
 in vec2 aPoint1;
@@ -32,9 +34,6 @@ out vec3 vSegmentCoreAA;
 out vec3 vSegmentEndsAA;
 out float vType;
 flat out float vHalfLineWidth;
-
-uniform float resolution;
-uniform float expand;
 
 // === style ===
 in float aStyleId;
@@ -317,7 +316,7 @@ void main(void){
             } else if (type == JOINT_MITER) {
                 pos = doBisect(norm, len, norm2, len2, dy, false); // not a far vertex because it was handled previously
             } else if (type == JOINT_BEVEL) {
-                float d2 = side / resolution;
+                float d2 = side;
                 if (vertexNum == 6.) {
                     pos = dy * norm + d2 * norm3;
                 } else {
@@ -344,8 +343,8 @@ void main(void){
 
     pos += isSegmentHead ? pointA : pointB;
 
-    vSegmentCoreAA = vec3(dy, dx, vSegmentCoreAA.z) * resolution;
-    vSegmentEndsAA = vSegmentEndsAA * resolution;
+    vSegmentCoreAA = vec3(dy, dx, vSegmentCoreAA.z);
+    vSegmentEndsAA = vSegmentEndsAA;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
     mat3 reverseY = mat3(
@@ -489,8 +488,6 @@ export class SmoothGraphicsShader extends Shader
             samplerSize: new Float32Array(2 * maxTextures),
             uSamplers: sampleValues,
             tint: new Float32Array([1, 1, 1, 1]),
-            resolution: 1,
-            expand: 1,
         }));
         this.settings = settings;
     }

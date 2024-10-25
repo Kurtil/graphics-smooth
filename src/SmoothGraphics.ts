@@ -713,24 +713,6 @@ export class SmoothGraphics extends Container
             .premultiply(worldAlpha)
             .toArray(uniforms.tint);
 
-        uniforms.resolution = renderer.renderTexture.current
-            ? renderer.renderTexture.current.resolution : renderer.resolution;
-
-        const projTrans = renderer.projection.transform;
-
-        if (projTrans)
-        {
-            // only uniform scale is supported!
-            const scale = Math.sqrt((projTrans.a * projTrans.a) + (projTrans.b * projTrans.b));
-
-            uniforms.resolution *= scale;
-        }
-
-        const multisample = renderer.renderTexture.current
-            ? renderer.renderTexture.current.multisample : renderer.multisample;
-
-        uniforms.expand = (multisample !== MSAA_QUALITY.NONE ? 2 : 1) / uniforms.resolution;
-
         // the first draw call, we can set the uniforms of the shader directly here.
 
         // this means that we can tack advantage of the sync function of pixi!
