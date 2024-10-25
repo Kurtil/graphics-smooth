@@ -148,15 +148,11 @@ void main(void){
         type = JOINT_CAP_ROUND;
     }
 
-    // AA
-    vType = 0.0;
-    float dy2 = -1.0;
-
     /**
      * Used to AA the segment sides.
      * @type { vec4(x: float, y: float, z: float, w: float) }
      * x: signed distance from the segment sides to the center line. Finale value sets with dy.
-     * y: aa value for the segment head. 
+     * y: aa value for the segment head. Final value sets with dx.
      * z: aa value for the segment tail
      * y and z goes from expand to -segment side length.
      */
@@ -179,6 +175,7 @@ void main(void){
     vSegmentEndsAA = vec3(0.0);
 
     vec2 pos;
+    float dx = -1.0;
     float dy = halfLineWidth + expand;
 
     if (vertexNum <= 3.) { 
@@ -223,9 +220,9 @@ void main(void){
             if (isSegmentHead) {
                 // position is updated only for the segment head to handle the cap
                 pos += back * (extra + expand);
-                dy2 = expand;
+                dx = expand;
             } else {
-                dy2 = dot(segment + pos, back) - extra;
+                dx = dot(segment + pos, back) - extra;
             }
         }
         if (type == JOINT_CAP_BUTT || type == JOINT_CAP_SQUARE) {
@@ -236,11 +233,12 @@ void main(void){
                 pos += forward * (extra + expand);
                 vSegmentCoreAA.z = expand; 
                 if (capType != 0.) {
-                    // CAP_SQUARE or CAP_BUTT are possible here when the line is one segment long with caps on both sides. dy2 must take into account the cap on segment tail.
-                    dy2 -= extra + expand;
+                    // CAP_SQUARE or CAP_BUTT are possible here when the line is one segment long with caps on both sides. dx must take into account the cap on segment tail.
+                    dx -= extra + expand;
                 }
             }
         }
+        vType = 0.0;
     } else if (type == JOINT_CAP_ROUND) {
         /**
          * From vertNum 4 to 8 :
@@ -336,17 +334,17 @@ void main(void){
         } else if (type == JOINT_MITER) {
             vType = 1.0;
         } else if (type == JOINT_BEVEL) {
-            vType = 2.0;
             vSegmentEndsAA.z = dot(norm, norm3) * halfLineWidth - side * dot(pos, norm3);
+            vType = 2.0;
         }
 
         dy = side * dot(pos, norm);
-        dy2 = side * dot(pos, norm2);
+        dx = side * dot(pos, norm2);
     }
 
     pos += isSegmentHead ? pointA : pointB;
 
-    vSegmentCoreAA = vec3(dy, dy2, vSegmentCoreAA.z) * resolution;
+    vSegmentCoreAA = vec3(dy, dx, vSegmentCoreAA.z) * resolution;
     vSegmentEndsAA = vSegmentEndsAA * resolution;
     vTravel = vec2(aTravel + dot(pos - pointA, vec2(-norm.y, norm.x)), 1.);
 
